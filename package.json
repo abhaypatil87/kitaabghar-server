@@ -1,0 +1,23 @@
+{
+  "name": "library_server",
+  "version": "1.0.0",
+  "description": "NodeJS, Express, and MySQL",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon ./src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Abhay Patil, <abhaypatil87@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "dotenv": "^9.0.2",
+    "express": "^4.17.1",
+    "knex": "^0.95.5",
+    "mysql": "^2.18.1",
+    "nodemon": "^2.0.7"
+  },
+  "devDependencies": {
+    "prettier": "^2.3.0"
+  }
+}
