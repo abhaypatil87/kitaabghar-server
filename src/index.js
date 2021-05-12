@@ -1,6 +1,5 @@
 require("dotenv").config();
 const koa = require("koa");
-const koaBodyParser = require("koa-bodyparser");
 const { userAgent } = require("koa-useragent");
 const cors = require("kcors");
 const authorsRouter = require("./routes/authors");
@@ -16,15 +15,20 @@ app.use(async function responseTime(ctx, next) {
 });
 
 // For cors with options
-app.use(cors({ origin: "*" }));
+app.use(
+  cors({
+    origin: "*",
+  })
+);
 
 // For useragent detection
 app.use(userAgent);
 
 // For managing body. We're only allowing json.
-app.use(koaBodyParser({ enableTypes: ["json"] }));
+app.use(require("koa-bodyparser")());
 
 app.use(authorsRouter.routes());
+app.use(authorsRouter.allowedMethods());
 
 app.listen(port, () => {
   console.log(`Library Server listening on port ${port}`);

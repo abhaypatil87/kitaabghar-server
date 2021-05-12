@@ -1,13 +1,20 @@
-const database = require("../database/database");
+const pool = require("../database/database");
 
 const findById = async (id) => {
+  let connection = await pool();
   try {
-    const [authorData] = await database("authors")
-      .select("id", "firstName", "lastName")
-      .where({ id });
-    return authorData;
+    let author = await connection.query(
+      `
+      SELECT author_id, firstname, lastname FROM authors WHERE author_id = ?
+      `,
+      [id]
+    );
+    return JSON.parse(JSON.stringify(author[0]));
   } catch (error) {
-    console.log(error);
+    ctx.throw(400, "INVALID_DATA");
+  } finally {
+    await connection.release();
+    await connection.destroy();
   }
 };
 
@@ -32,41 +39,61 @@ class Author {
   }
 
   async all() {
+    let connection = await pool();
     try {
-      return await database("authors").select("*");
+      let authors = await connection.query(
+        `SELECT author_id, firstname, lastname FROM authors`
+      );
+      return JSON.parse(JSON.stringify(authors));
     } catch (error) {
-      throw new Error(error);
+      ctx.throw(400, "INVALID_DATA");
     }
   }
 
   async store() {
+    let connection = await pool();
     try {
-      return await database("authors").insert(this);
+      return await connection.query(
+        `INSERT INTO authors(firstname, lastname) VALUES(?, ?)`,
+        [this.firstName, this.lastName]
+      );
     } catch (error) {
       throw new Error("ERROR");
     }
   }
 
-  async save() {
+  async update() {
+    let connection = await pool();
     try {
-      return await database("authors").update(this).where({ id: this.id });
+      await connection.query("START TRANSACTION");
+      await connection.query(
+        `UPDATE authors SET firstname=?, lastname=? WHERE author_id=?`,
+        [this.firstName, this.lastName, this.id]
+      );
+      await connection.query("COMMIT");
+      return true;
     } catch (error) {
-      throw new Error("ERROR");
+      await connection.query("ROLLBACK");
+      console.log(ex);
+      throw ex;
     }
   }
 
-  async destroy() {
+  async remove() {
+    let connection = await pool();
     try {
-      return await database("authors").delete().where({ id: this.id });
+      return await connection.query(`DELETE FROM authors WHERE author_id= ?`, [
+        this.id,
+      ]);
     } catch (error) {
       throw new Error("ERROR");
     }
   }
 
   init(props) {
-    this.id = props.id;
-    this.firstName = props.firstName;
-    this.lastName = props.lastName;
+    this.id = props.author_id || -1;
+    this.firstName = props.firstname;
+    this.lastName = props.lastname;
   }
 }
 module.exports = {
