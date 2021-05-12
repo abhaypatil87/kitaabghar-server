@@ -1,6 +1,6 @@
-const express = require("express");
+const KoaRouter = require("koa-router");
 const authorsController = require("../controllers/authorsController");
-const router = express.Router();
+const router = new KoaRouter();
 
 const baseUrl = "/api";
 

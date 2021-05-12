@@ -1,11 +1,11 @@
 const { Author } = require("../models/Author");
 
-const index = async (request, response) => {
+const index = async (ctx) => {
   //const { query } = request;
   const author = new Author();
   try {
     const result = await author.all();
-    response.body = { data: { authors: result } };
+    ctx.body = { data: { authors: result } };
   } catch (error) {
     console.log(error);
   }

@@ -10,10 +10,14 @@
   "author": "Abhay Patil, <abhaypatil87@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "body-parser": "^1.19.0",
     "dotenv": "^9.0.2",
-    "express": "^4.17.1",
+    "kcors": "^2.2.2",
     "knex": "^0.95.5",
+    "koa": "^2.13.1",
+    "koa-bodyparser": "^4.3.0",
+    "koa-json-error": "^3.1.2",
+    "koa-router": "^10.0.0",
+    "koa-useragent": "^4.0.0",
     "mysql": "^2.18.1",
     "nodemon": "^2.0.7"
   },

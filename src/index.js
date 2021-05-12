@@ -1,26 +1,31 @@
 require("dotenv").config();
-const express = require("express");
-const bodyParser = require("body-parser");
+const koa = require("koa");
+const koaBodyParser = require("koa-bodyparser");
+const { userAgent } = require("koa-useragent");
+const cors = require("kcors");
 const authorsRouter = require("./routes/authors");
 
 const port = process.env.PORT || 4000;
-const app = express();
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
-app.use((request, response, next) => {
-  response.setHeader("Access-Control-Allow-Origin", "*");
-  response.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept"
-  );
-  next();
+
+const app = new koa();
+app.use(async function responseTime(ctx, next) {
+  const t1 = Date.now();
+  await next();
+  const t2 = Date.now();
+  ctx.set("X-Response-Time", `${Math.ceil(t2 - t1)}ms`);
 });
 
-app.use(authorsRouter);
+// For cors with options
+app.use(cors({ origin: "*" }));
 
-app.get("/", (req, res) => {
-  res.send("Hello World!");
-});
+// For useragent detection
+app.use(userAgent);
+
+// For managing body. We're only allowing json.
+app.use(koaBodyParser({ enableTypes: ["json"] }));
+
+app.use(authorsRouter.routes());
+
 app.listen(port, () => {
   console.log(`Library Server listening on port ${port}`);
 });
