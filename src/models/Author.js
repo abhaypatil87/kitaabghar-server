@@ -5,16 +5,13 @@ const findById = async (id) => {
   try {
     let author = await connection.query(
       `
-      SELECT author_id, firstname, lastname FROM authors WHERE author_id = ?
+      SELECT author_id as id, firstname as firstName, lastname as lastName FROM authors WHERE author_id = ?
       `,
       [id]
     );
     return JSON.parse(JSON.stringify(author[0]));
   } catch (error) {
     ctx.throw(400, "INVALID_DATA");
-  } finally {
-    await connection.release();
-    await connection.destroy();
   }
 };
 
@@ -34,7 +31,7 @@ class Author {
       if (!result) return {};
       this.init(result);
     } catch (error) {
-      throw new Error(error);
+      throw error;
     }
   }
 
@@ -42,7 +39,7 @@ class Author {
     let connection = await pool();
     try {
       let authors = await connection.query(
-        `SELECT author_id, firstname, lastname FROM authors`
+        `SELECT author_id as id, firstname as firstName, lastname as lastName FROM authors`
       );
       return JSON.parse(JSON.stringify(authors));
     } catch (error) {
@@ -53,12 +50,15 @@ class Author {
   async store() {
     let connection = await pool();
     try {
+      await connection.query("START TRANSACTION");
       return await connection.query(
         `INSERT INTO authors(firstname, lastname) VALUES(?, ?)`,
         [this.firstName, this.lastName]
       );
     } catch (error) {
-      throw new Error("ERROR");
+      throw error;
+    } finally {
+      await connection.query("COMMIT");
     }
   }
 
@@ -74,8 +74,7 @@ class Author {
       return true;
     } catch (error) {
       await connection.query("ROLLBACK");
-      console.log(ex);
-      throw ex;
+      throw error;
     }
   }
 
@@ -86,14 +85,14 @@ class Author {
         this.id,
       ]);
     } catch (error) {
-      throw new Error("ERROR");
+      throw error;
     }
   }
 
   init(props) {
-    this.id = props.author_id || -1;
-    this.firstName = props.firstname;
-    this.lastName = props.lastname;
+    this.id = props.id;
+    this.firstName = props.firstName;
+    this.lastName = props.lastName;
   }
 }
 module.exports = {
