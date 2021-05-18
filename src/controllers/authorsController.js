@@ -18,24 +18,13 @@ const index = async (ctx) => {
       },
     };
   } catch (error) {
-    ctx.throw(400, {
-      error: {
-        code: 400,
-        message: "INVALID_DATA",
-      },
-    });
+    ctx.throw(400, error.message);
   }
 };
 
 const show = async (ctx) => {
   const { params } = ctx;
-  if (!params.id)
-    ctx.throw(400, {
-      error: {
-        code: 400,
-        message: "INVALID_DATA",
-      },
-    });
+  if (!params.id) ctx.throw(400, "ID is required");
 
   // Initialize the Author
   const author = new Author();
@@ -49,12 +38,7 @@ const show = async (ctx) => {
       },
     };
   } catch (error) {
-    ctx.throw(400, {
-      error: {
-        code: 400,
-        message: "INVALID_DATA",
-      },
-    });
+    ctx.throw(400, error.message);
   }
 };
 
@@ -74,12 +58,7 @@ const create = async (ctx) => {
       },
     };
   } catch (error) {
-    ctx.throw(400, {
-      error: {
-        code: 400,
-        message: "INVALID_DATA",
-      },
-    });
+    ctx.throw(400, error.message);
   }
 };
 
@@ -87,14 +66,11 @@ const update = async (ctx) => {
   const { params } = ctx;
   const request = ctx.request.body;
 
-  if (!params.id)
-    ctx.throw(400, { error: { code: 400, message: "INVALID_DATA" } });
+  if (!params.id) ctx.throw(400, "ID is required");
 
-  // Find and set that note
   const author = new Author();
   await author.find(params.id);
-  if (!author)
-    ctx.throw(400, { error: { code: 400, message: "INVALID_DATA" } });
+  if (!author) ctx.throw(400, "Author not found");
 
   // Replace the author data with the new updated author data
   author.id = params.id;
@@ -105,25 +81,23 @@ const update = async (ctx) => {
     await author.update();
     ctx.body = { data: { author } };
   } catch (error) {
-    ctx.throw(400, { error: { code: 400, message: "INVALID_DATA" } });
+    ctx.throw(400, error.message);
   }
 };
 
 const remove = async (ctx) => {
   const { params } = ctx;
-  if (!params.id)
-    ctx.throw(400, { error: { code: 400, message: "INVALID_DATA" } });
+  if (!params.id) ctx.throw(400, "ID is required");
 
   const author = new Author();
   await author.find(params.id);
-  if (!author)
-    ctx.throw(400, { error: { code: 400, message: "INVALID_DATA" } });
+  if (!author) ctx.throw(400, "Author not found");
 
   try {
     await author.remove();
     ctx.body = { data: {} };
   } catch (error) {
-    ctx.throw(400, { error: { code: 400, message: "INVALID_DATA" } });
+    ctx.throw(400, error.message);
   }
 };
 

@@ -11,8 +11,48 @@ const findById = async (id) => {
     );
     return JSON.parse(JSON.stringify(author[0]));
   } catch (error) {
-    ctx.throw(400, "INVALID_DATA");
+    ctx.throw(400, error.message);
   }
+};
+
+const findByName = async (names) => {
+  let connection = await pool();
+  try {
+    let author = await connection.query(
+      `
+      SELECT author_id as id, firstname as firstName, lastname as lastName 
+      FROM authors 
+      WHERE LOWER(firstname) LIKE '%${names[0]}%' AND LOWER(lastname) LIKE '%${names[1]}%'
+      ORDER BY firstname
+      LIMIT 1`
+    );
+    if (author.length === 0) {
+      return undefined;
+    }
+    return JSON.parse(JSON.stringify(author[0]));
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+const getOrCreateAuthor = async (bookAuthor) => {
+  let author = null;
+  if (bookAuthor !== undefined) {
+    try {
+      author = await findByName([
+        bookAuthor.firstName.toLowerCase(),
+        bookAuthor.lastName.toLowerCase(),
+      ]);
+      if (author === undefined) {
+        author = new Author(bookAuthor);
+        const result = await author.store();
+        author.id = result.insertId;
+      }
+    } catch (error) {
+      throw new Error(error.message);
+    }
+  }
+  return author;
 };
 
 class Author {
@@ -39,7 +79,9 @@ class Author {
     let connection = await pool();
     try {
       let authors = await connection.query(
-        `SELECT author_id as id, firstname as firstName, lastname as lastName FROM authors`
+        `SELECT author_id as id, firstname as firstName, lastname as lastName 
+               FROM authors
+               ORDER BY firstName`
       );
       return JSON.parse(JSON.stringify(authors));
     } catch (error) {
@@ -96,6 +138,7 @@ class Author {
   }
 }
 module.exports = {
-  findById,
+  findByName,
+  getOrCreateAuthor,
   Author,
 };
