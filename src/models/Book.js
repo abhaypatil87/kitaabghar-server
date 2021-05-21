@@ -12,11 +12,12 @@ const findById = async (id) => {
          books.isbn_10 as isbn10,
          books.isbn_13 as isbn13,
          books.page_count as pageCount,
+         books.thumbnail_url as thumbnailUrl,
          authors.firstname as firstName,
          authors.lastname as lastName
-       FROM books
-              INNER JOIN authors ON authors.author_id = books.author_id
-       WHERE books.book_id = ?
+      FROM books
+      INNER JOIN authors ON authors.author_id = books.author_id
+      WHERE books.book_id = ?
       `,
       [id]
     );
@@ -35,6 +36,7 @@ class Book {
   isbn13;
   pageCount;
   authorId;
+  thumbnailUrl;
 
   constructor(props) {
     if (!props) return;
@@ -64,10 +66,12 @@ class Book {
             books.isbn_10 as isbn10,
             books.isbn_13 as isbn13,
             books.page_count as pageCount,
+            books.thumbnail_url as thumbnailUrl,
             authors.firstname as firstName,
             authors.lastname as lastName
         FROM books
-        INNER JOIN authors ON authors.author_id = books.author_id`
+        INNER JOIN authors ON authors.author_id = books.author_id
+        ORDER BY books.title`
       );
       return JSON.parse(JSON.stringify(books));
     } catch (error) {
@@ -80,8 +84,8 @@ class Book {
     try {
       await connection.query("START TRANSACTION");
       return await connection.query(
-        `INSERT INTO books(title, subtitle, description, page_count, isbn_10, isbn_13, author_id) 
-         VALUES(?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO books(title, subtitle, description, page_count, isbn_10, isbn_13, author_id, thumbnail_url) 
+         VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           this.title,
           this.subtitle,
@@ -90,10 +94,13 @@ class Book {
           this.isbn10,
           this.isbn13,
           this.authorId,
+          this.thumbnailUrl,
         ]
       );
     } catch (error) {
       throw new Error(error.message);
+    } finally {
+      connection.query("COMMIT");
     }
   }
 
@@ -133,6 +140,7 @@ class Book {
     this.description = props.description;
     this.pageCount = props.page_count;
     this.authorId = props.authorId;
+    this.thumbnailUrl = props.thumbnail_url;
   }
 }
 module.exports = {

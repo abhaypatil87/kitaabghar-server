@@ -16,6 +16,7 @@ const bookSchema = Joi.object({
   description: Joi.string(),
   pageCount: Joi.number(),
   authorId: Joi.number().required(),
+  thumbnailUrl: Joi.string(),
 });
 
 const index = async (ctx) => {
@@ -60,14 +61,13 @@ const create = async (ctx) => {
 
   const gBooksResp = await fetchGoogleBooksApiResponse(request.isbn);
   const olBooksResp = await fetchOpenLibraryApiResponse(request.isbn);
-  const bookData = getBookDataFromResponse(gBooksResp, olBooksResp);
+  const bookData = await getBookDataFromResponse(gBooksResp, olBooksResp);
   const author = await getOrCreateAuthor(bookData.author);
 
   bookData.authorId = author.id;
   const book = new Book(bookData);
   const validator = bookSchema.validate(book);
   if (validator.error) {
-    console.log(validator.error.details);
     ctx.throw(400, validator.error);
   }
 
