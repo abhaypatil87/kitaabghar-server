@@ -62,12 +62,12 @@ const getConvertedBookTitle = (title) => {
   }
 };
 
-const getBookDataFromResponse = async (gBooksResp, openLibResp) => {
+const getBookDataFromResponse = async (response) => {
   const book = {};
   /* Consume the Google Books API response */
-  if (gBooksResp.totalItems > 0) {
-    const volumeInfo = gBooksResp.items[0].volumeInfo;
-    const images = gBooksResp.items
+  if (response.google.totalItems > 0) {
+    const volumeInfo = response.google.items[0].volumeInfo;
+    const images = response.google.items
       .map((item) => item.volumeInfo && item.volumeInfo.imageLinks)
       .filter((a) => !!a);
 
@@ -98,23 +98,32 @@ const getBookDataFromResponse = async (gBooksResp, openLibResp) => {
     }
   } else {
     /* Consume the Open Library response */
-    book.title = openLibResp.title || "";
-    book.subtitle = openLibResp.subtitle || "";
-    if (openLibResp.description && openLibResp.description.value) {
-      book.description = openLibResp.description.value || "";
+    book.title = response.openLibrary.title || "";
+    book.subtitle = response.openLibrary.subtitle || "";
+    if (
+      response.openLibrary.description &&
+      response.openLibrary.description.value
+    ) {
+      book.description = response.openLibrary.description.value || "";
     }
-    book.page_count = openLibResp.number_of_pages || "";
+    book.page_count = response.openLibrary.number_of_pages || "";
   }
 
   if (!book.isbn13) {
-    if (openLibResp.isbn_13 !== undefined && openLibResp.isbn_13.length > 0) {
-      book.isbn13 = openLibResp.isbn_13[0];
+    if (
+      response.openLibrary.isbn_13 !== undefined &&
+      response.openLibrary.isbn_13.length > 0
+    ) {
+      book.isbn13 = response.openLibrary.isbn_13[0];
     }
   }
 
   if (!book.isbn10) {
-    if (openLibResp.isbn_10 !== undefined && openLibResp.isbn_10.length > 0) {
-      book.isbn10 = openLibResp.isbn_10[0];
+    if (
+      response.openLibrary.isbn_10 !== undefined &&
+      response.openLibrary.isbn_10.length > 0
+    ) {
+      book.isbn10 = response.openLibrary.isbn_10[0];
     }
   }
 

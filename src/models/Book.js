@@ -67,8 +67,7 @@ class Book {
             books.isbn_13 as isbn13,
             books.page_count as pageCount,
             books.thumbnail_url as thumbnailUrl,
-            authors.firstname as firstName,
-            authors.lastname as lastName
+            CONCAT(authors.firstname, ' ', authors.lastname) as author
         FROM books
         INNER JOIN authors ON authors.author_id = books.author_id
         ORDER BY books.title`
@@ -109,7 +108,7 @@ class Book {
     try {
       await connection.query("START TRANSACTION");
       await connection.query(
-        `UPDATE books SET firstname=?, lastname=? WHERE author_id=?`,
+        `UPDATE books SET firstname=?, lastname=? WHERE book_id=?`,
         [this.firstName, this.lastName, this.id]
       );
       await connection.query("COMMIT");
@@ -123,10 +122,11 @@ class Book {
   async remove() {
     let connection = await pool();
     try {
-      return await connection.query(`DELETE FROM books WHERE author_id= ?`, [
-        this.id,
-      ]);
+      await connection.query(`DELETE FROM books WHERE book_id = ?`, [this.id]);
+      await connection.query("COMMIT");
+      return true;
     } catch (error) {
+      await connection.query("ROLLBACK");
       throw new Error(error.message);
     }
   }
