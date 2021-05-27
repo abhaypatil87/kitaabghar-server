@@ -4,6 +4,7 @@ const { userAgent } = require("koa-useragent");
 const cors = require("kcors");
 const authorsRouter = require("./src/routes/authors");
 const booksRouter = require("./src/routes/books");
+const { runMigrations, seedMigrations } = require("./src/database/database");
 
 const port = process.env.PORT || 4000;
 
@@ -43,6 +44,8 @@ app.use(authorsRouter.allowedMethods());
 app.use(booksRouter.routes());
 app.use(booksRouter.allowedMethods());
 
-app.listen(port, () => {
-  console.log(`Library Server listening on port ${port}`);
+app.listen(port, async () => {
+  await runMigrations();
+  await seedMigrations();
+  await console.log(`Library Server listening on port ${port}`);
 });

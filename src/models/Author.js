@@ -1,4 +1,4 @@
-const pool = require("../database/database");
+const { pool } = require("../database/database");
 
 const findById = async (id) => {
   let connection = await pool();
