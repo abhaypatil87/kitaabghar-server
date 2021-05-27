@@ -21,7 +21,7 @@ module.exports = {
       directory: "./src/database/migrations",
     },
     seeds: {
-      seed: true,
+      seed: false,
       directory: "./src/database/seeds",
     },
   },
@@ -39,7 +39,7 @@ module.exports = {
       directory: "./src/database/migrations",
     },
     seeds: {
-      seed: true,
+      seed: false,
       directory: "./src/database/seeds",
     },
   },

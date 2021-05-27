@@ -36,14 +36,25 @@ function readFilesSync(dir) {
 }
 
 /**
+ * @description Executes SQL files in a given directory using the connection
  * @param dir
  * @param conn
+ * @param options
  */
-function executeSqlQueriesInDir(dir, conn) {
+function executeSqlQueriesInDir(dir, conn, options) {
+  let filesToFilter = [];
+  if (typeof arguments[2] === "object") {
+    for (const option of options) {
+      if (option === "filter") {
+        filesToFilter = [...options["filter"]];
+      }
+    }
+  }
   const files = readFilesSync(dir);
+
   files.forEach((file) => {
     /* Execute only .sql files */
-    if (file.ext === ".sql") {
+    if (file.ext.toLowerCase() === ".sql") {
       fs.readFile(
         dir + "/" + file.name + file.ext,
         "utf8",
@@ -67,13 +78,32 @@ const initialiseDatabase = async (conn, dbName) => {
   console.log(`Schema initialisation complete.`);
 };
 
+const migrateDatabase = async (conn) => {
+  try {
+    const result = await conn.query(
+      `SELECT script_name
+          FROM database_version
+        ORDER BY script_name DESC
+        `
+    );
+
+    const fileNames = [];
+    for (const scriptName of result) {
+      const scriptFileName = JSON.parse(JSON.stringify(scriptName));
+      fileNames.push(scriptFileName.script_name);
+    }
+    console.log(fileNames);
+    executeSqlQueriesInDir(seeds.directory, conn, { filter: fileNames });
+    // console.log(JSON.parse(JSON.stringify(result)));
+  } catch (error) {}
+};
+
 const runMigrations = async () => {
   console.log(`Running migrations scripts.`);
   const conn = await pool();
   try {
     const result = await conn.query(
-      `
-          SELECT 1
+      `SELECT 1
           FROM information_schema.tables
           WHERE table_schema = ?
           AND table_name = 'database_version'
@@ -87,6 +117,7 @@ const runMigrations = async () => {
       await initialiseDatabase(conn, connection.database);
     } else {
       /* Run only the necessary scripts */
+      await migrateDatabase(conn);
     }
   } catch (error) {
     throw new Error(error.message);
