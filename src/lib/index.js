@@ -49,12 +49,8 @@ const fetchOpenLibraryBookCover = async (isbn) => {
 const getConvertedBookTitle = (title) => {
   if (title !== null && title !== undefined) {
     let words = title.split(" ");
-    let firstWord = words.shift();
-    if (
-      firstWord.toLowerCase() === "a" ||
-      firstWord.toLowerCase() === "an" ||
-      firstWord.toLowerCase() === "the"
-    ) {
+    let firstWord = words.shift().toLowerCase();
+    if (firstWord === "a" || firstWord === "an" || firstWord === "the") {
       return words.join(" ") + ", " + firstWord;
     } else {
       return title;

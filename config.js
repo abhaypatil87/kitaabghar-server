@@ -13,7 +13,7 @@ module.exports = {
       port: process.env.DB_PORT,
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
-      database: `${process.env.DB_DATABASE}_testing`,
+      database: `test_${process.env.DB_DATABASE}`,
       charset: "utf8mb4",
       collate: "utf8mb4_unicode_ci",
     },
@@ -21,6 +21,7 @@ module.exports = {
       directory: "./src/database/migrations",
     },
     seeds: {
+      seed: true,
       directory: "./src/database/seeds",
     },
   },
@@ -34,6 +35,13 @@ module.exports = {
       charset: "utf8mb4",
       collate: "utf8mb4_unicode_ci",
     },
+    migrations: {
+      directory: "./src/database/migrations",
+    },
+    seeds: {
+      seed: true,
+      directory: "./src/database/seeds",
+    },
   },
   production: {
     client: "mysql",
@@ -43,12 +51,16 @@ module.exports = {
       port: process.env.DB_PORT,
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
-      database: `${process.env.DB_DATABASE}_production`,
+      database: `${process.env.DB_DATABASE}`,
       charset: "utf8mb4",
       collate: "utf8mb4_unicode_ci",
     },
     migrations: {
       directory: "./src/database/migrations",
+    },
+    seeds: {
+      seed: false,
+      directory: "./src/database/seeds",
     },
   },
 };
