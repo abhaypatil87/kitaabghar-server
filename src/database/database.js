@@ -3,9 +3,10 @@ const fs = require("fs").promises;
 const path = require("path");
 
 const environment = process.env.NODE_ENV || "development";
-const { connection, migrations, seeds } =
-  require("../../config.js")[environment];
+const { connection, migrations, seeds } = require("../../config")[environment];
+const Logger = require("../utils/logger");
 
+const logger = Logger.child({ component: "database" });
 /**
  * @description Read files asynchronously from a folder, with natural sorting
  * @param {String} dir Absolute path to directory
@@ -35,6 +36,7 @@ const readFiles = async (dir) => {
 const isSqlFile = (fileName) => {
   return fileName.toLowerCase().indexOf(".sql") !== -1;
 };
+
 /**
  * @description Executes SQL files in a given directory using the connection
  * @param dir
@@ -59,9 +61,11 @@ const executeMultiSqlFilesInDir = async (dir, conn, options) => {
       });
       const queries = queryFile.split(/;\n\s*/g).filter((q) => q.length > 0);
 
-      console.log(`Executing ${queries.length} queries from ${file}`);
+      logger.info(
+        `ACTIVITY: executeMultiSqlFilesInDir. Executing ${queries.length} queries from ${file}`
+      );
       for (const query of queries) {
-        console.log(`Executing query:\n ${query}`);
+        logger.info(`Executing query:\n ${query}`);
         await conn.query(query);
       }
     }
@@ -69,9 +73,11 @@ const executeMultiSqlFilesInDir = async (dir, conn, options) => {
 };
 
 const initialiseDatabase = async (conn, dbName) => {
-  console.log(`Initialising new database ${dbName} with full schema`);
+  logger.info(
+    `ACTIVITY: initialiseDatabase. START. Initialising a new database ${dbName} with full schema`
+  );
   await executeMultiSqlFilesInDir(migrations.directory, conn);
-  console.log(`Schema initialisation complete`);
+  logger.info(`ACTIVITY: initialiseDatabase. END.`);
 };
 
 const migrateDatabase = async (conn) => {
@@ -98,7 +104,7 @@ const migrateDatabase = async (conn) => {
 };
 
 const runMigrations = async () => {
-  console.log(`Running migrations scripts`);
+  logger.info(`ACTIVITY: runMigrations. START`);
   const conn = await pool();
   try {
     const result = await conn.query(
@@ -119,19 +125,24 @@ const runMigrations = async () => {
       await migrateDatabase(conn);
     }
   } catch (error) {
+    logger.debug(`ACTIVITY: runMigrations. FAILED. REASON: ${error.message}`);
     throw new Error(error.message);
+  } finally {
+    logger.info(`ACTIVITY: runMigrations. END`);
   }
 };
 
 const seedMigrations = async () => {
-  console.log(`Running seed data scripts`);
+  logger.info(`ACTIVITY: seedMigrations. START`);
   if (!seeds.seed) {
-    console.log(`Seed flag is set to false. Skipping seeding`);
+    logger.info(
+      `ACTIVITY: seedMigrations. SKIPPED. REASON: seeds flag is set to FALSE`
+    );
   } else {
     const conn = await pool();
     await executeMultiSqlFilesInDir(seeds.directory, conn);
   }
-  console.log(`Seeding data scripts complete`);
+  logger.info(`ACTIVITY: seedMigrations. END`);
 };
 
 const pool = async () => {
@@ -145,6 +156,7 @@ const pool = async () => {
     }
     return conn;
   } catch (ex) {
+    logger.debug(`ACTIVITY: createPool. FAILED. REASON: ${ex.message}`);
     throw ex;
   }
 };

@@ -28,6 +28,10 @@ module.exports = {
       seed: false,
       directory: SEEDS_PATH,
     },
+    logger: {
+      name: "Library Server",
+      level: "info",
+    },
   },
   development: {
     connection: {
@@ -45,6 +49,10 @@ module.exports = {
     seeds: {
       seed: false,
       directory: SEEDS_PATH,
+    },
+    logger: {
+      name: "Library Server",
+      level: "info",
     },
   },
   production: {
@@ -65,6 +73,10 @@ module.exports = {
     seeds: {
       seed: false,
       directory: SEEDS_PATH,
+    },
+    logger: {
+      name: "Library Server",
+      level: "info",
     },
   },
 };
