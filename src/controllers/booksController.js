@@ -5,7 +5,7 @@ const {
   fetchGoogleBooksApiResponse,
   fetchOpenLibraryApiResponse,
   getBookDataFromResponse,
-} = require("../lib");
+} = require("../utils");
 
 const bookSchema = Joi.object({
   id: Joi.number().integer(),
