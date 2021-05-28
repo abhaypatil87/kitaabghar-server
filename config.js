@@ -1,8 +1,12 @@
+const path = require("path");
 if (!process.env.NODE_ENV) {
   throw new Error("NODE_ENV not set");
 }
 
 require("dotenv").config();
+
+const MIGRATIONS_PATH = path.resolve(__dirname, "src/database/migrations");
+const SEEDS_PATH = path.resolve(__dirname, "src/database/seeds");
 
 module.exports = {
   testing: {
@@ -18,11 +22,11 @@ module.exports = {
       collate: "utf8mb4_unicode_ci",
     },
     migrations: {
-      directory: "./src/database/migrations",
+      directory: MIGRATIONS_PATH,
     },
     seeds: {
-      seed: true,
-      directory: "./src/database/seeds",
+      seed: false,
+      directory: SEEDS_PATH,
     },
   },
   development: {
@@ -36,11 +40,11 @@ module.exports = {
       collate: "utf8mb4_unicode_ci",
     },
     migrations: {
-      directory: "./src/database/migrations",
+      directory: MIGRATIONS_PATH,
     },
     seeds: {
-      seed: true,
-      directory: "./src/database/seeds",
+      seed: false,
+      directory: SEEDS_PATH,
     },
   },
   production: {
@@ -56,11 +60,11 @@ module.exports = {
       collate: "utf8mb4_unicode_ci",
     },
     migrations: {
-      directory: "./src/database/migrations",
+      directory: MIGRATIONS_PATH,
     },
     seeds: {
       seed: false,
-      directory: "./src/database/seeds",
+      directory: SEEDS_PATH,
     },
   },
 };
