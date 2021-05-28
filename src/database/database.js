@@ -1,14 +1,10 @@
 const mysql = require("promise-mysql");
-const fs = require('fs').promises;
+const fs = require("fs").promises;
 const path = require("path");
 
 const environment = process.env.NODE_ENV || "development";
-const {
-  connection,
-  migrations,
-  seeds
-} =
-require("../../config.js")[environment];
+const { connection, migrations, seeds } =
+  require("../../config.js")[environment];
 
 /**
  * @description Read files asynchronously from a folder, with natural sorting
@@ -34,11 +30,11 @@ const readFiles = async (dir) => {
   });
 
   return sqlFiles;
-}
+};
 
 const isSqlFile = (fileName) => {
   return fileName.toLowerCase().indexOf(".sql") !== -1;
-}
+};
 /**
  * @description Executes SQL files in a given directory using the connection
  * @param dir
@@ -58,7 +54,9 @@ const executeMultiSqlFilesInDir = async (dir, conn, options) => {
   const files = await readFiles(dir);
   for (const file of files) {
     if (!filesToFilter.includes(file)) {
-      const queryFile = await fs.readFile(dir + "/" + file, {encoding: 'utf8'});
+      const queryFile = await fs.readFile(path.resolve(dir, file), {
+        encoding: "utf8",
+      });
       const queries = queryFile.split(/;\n\s*/g).filter((q) => q.length > 0);
 
       console.log(`Executing ${queries.length} queries from ${file}`);
@@ -68,11 +66,11 @@ const executeMultiSqlFilesInDir = async (dir, conn, options) => {
       }
     }
   }
-}
+};
 
 const initialiseDatabase = async (conn, dbName) => {
   console.log(`Initialising new database ${dbName} with full schema`);
-  executeMultiSqlFilesInDir(migrations.directory, conn);
+  await executeMultiSqlFilesInDir(migrations.directory, conn);
   console.log(`Schema initialisation complete`);
 };
 
@@ -91,8 +89,8 @@ const migrateDatabase = async (conn) => {
       fileNames.push(scriptFileName.script_name);
     }
 
-    executeMultiSqlFilesInDir(migrations.directory, conn, {
-      filter: fileNames
+    await executeMultiSqlFilesInDir(migrations.directory, conn, {
+      filter: fileNames,
     });
   } catch (error) {
     throw new Error(error.message);
@@ -131,7 +129,7 @@ const seedMigrations = async () => {
     console.log(`Seed flag is set to false. Skipping seeding`);
   } else {
     const conn = await pool();
-    executeMultiSqlFilesInDir(seeds.directory, conn);
+    await executeMultiSqlFilesInDir(seeds.directory, conn);
   }
   console.log(`Seeding data scripts complete`);
 };
