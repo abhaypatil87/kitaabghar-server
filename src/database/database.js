@@ -1,105 +1,106 @@
 const mysql = require("promise-mysql");
-const fs = require("fs");
+const fs = require('fs').promises;
 const path = require("path");
 
 const environment = process.env.NODE_ENV || "development";
-const { connection, migrations, seeds } =
-  require("../../config.js")[environment];
+const {
+  connection,
+  migrations,
+  seeds
+} =
+require("../../config.js")[environment];
 
 /**
- * @description Read files synchronously from a folder, with natural sorting
+ * @description Read files asynchronously from a folder, with natural sorting
  * @param {String} dir Absolute path to directory
  * @returns {Object[]} List of object, each object represent a file
  * structured like so: `{ name, ext, stat }`
  */
-function readFilesSync(dir) {
-  const files = [];
+const readFiles = async (dir) => {
+  const sqlFiles = [];
+  const files = await fs.readdir(dir);
 
-  fs.readdirSync(dir).forEach((fileName) => {
-    const name = path.parse(fileName).name;
-    const ext = path.parse(fileName).ext;
-    const filepath = path.resolve(dir, fileName);
-    const stat = fs.statSync(filepath);
-    const isFile = stat.isFile();
+  for (const file of files) {
+    if (isSqlFile(file)) {
+      sqlFiles.push(file);
+    }
+  }
 
-    if (isFile) files.push({ name, ext, stat });
-  });
-
-  files.sort((a, b) => {
-    return a.name.localeCompare(b.name, undefined, {
+  sqlFiles.sort((a, b) => {
+    return a.localeCompare(b, undefined, {
       numeric: true,
       sensitivity: "base",
     });
   });
 
-  return files;
+  return sqlFiles;
 }
 
+const isSqlFile = (fileName) => {
+  return fileName.toLowerCase().indexOf(".sql") !== -1;
+}
 /**
  * @description Executes SQL files in a given directory using the connection
  * @param dir
  * @param conn
  * @param options
  */
-function executeSqlQueriesInDir(dir, conn, options) {
+const executeMultiSqlFilesInDir = async (dir, conn, options) => {
   let filesToFilter = [];
   if (typeof arguments[2] === "object") {
-    for (const option of options) {
-      if (option === "filter") {
+    for (const property in options) {
+      if (property === "filter") {
         filesToFilter = [...options["filter"]];
       }
     }
   }
-  const files = readFilesSync(dir);
 
-  files.forEach((file) => {
-    /* Execute only .sql files */
-    if (file.ext.toLowerCase() === ".sql") {
-      fs.readFile(
-        dir + "/" + file.name + file.ext,
-        "utf8",
-        async (error, data) => {
-          if (error) {
-            throw new Error(error.message);
-          }
-          const queries = data.split(/;\n\s*/g).filter((q) => q.length > 0);
-          for (const query of queries) {
-            await conn.query(query);
-          }
-        }
-      );
+  const files = await readFiles(dir);
+  for (const file of files) {
+    if (!filesToFilter.includes(file)) {
+      const queryFile = await fs.readFile(dir + "/" + file, {encoding: 'utf8'});
+      const queries = queryFile.split(/;\n\s*/g).filter((q) => q.length > 0);
+
+      console.log(`Executing ${queries.length} queries from ${file}`);
+      for (const query of queries) {
+        console.log(`Executing query:\n ${query}`);
+        await conn.query(query);
+      }
     }
-  });
+  }
 }
 
 const initialiseDatabase = async (conn, dbName) => {
-  console.log(`Initialising new database ${dbName} with full schema.`);
-  executeSqlQueriesInDir(migrations.directory, conn);
-  console.log(`Schema initialisation complete.`);
+  console.log(`Initialising new database ${dbName} with full schema`);
+  executeMultiSqlFilesInDir(migrations.directory, conn);
+  console.log(`Schema initialisation complete`);
 };
 
 const migrateDatabase = async (conn) => {
   try {
-    const result = await conn.query(
+    const scriptNames = await conn.query(
       `SELECT script_name
           FROM database_version
-        ORDER BY script_name DESC
-        `
+       ORDER BY script_name ASC
+      `
     );
 
     const fileNames = [];
-    for (const scriptName of result) {
+    for (const scriptName of scriptNames) {
       const scriptFileName = JSON.parse(JSON.stringify(scriptName));
       fileNames.push(scriptFileName.script_name);
     }
-    console.log(fileNames);
-    executeSqlQueriesInDir(seeds.directory, conn, { filter: fileNames });
-    // console.log(JSON.parse(JSON.stringify(result)));
-  } catch (error) {}
+
+    executeMultiSqlFilesInDir(migrations.directory, conn, {
+      filter: fileNames
+    });
+  } catch (error) {
+    throw new Error(error.message);
+  }
 };
 
 const runMigrations = async () => {
-  console.log(`Running migrations scripts.`);
+  console.log(`Running migrations scripts`);
   const conn = await pool();
   try {
     const result = await conn.query(
@@ -125,14 +126,14 @@ const runMigrations = async () => {
 };
 
 const seedMigrations = async () => {
-  console.log(`Running seed data scripts.`);
+  console.log(`Running seed data scripts`);
   if (!seeds.seed) {
-    console.log(`Seed flag is set to false. Skipping seeding.`);
+    console.log(`Seed flag is set to false. Skipping seeding`);
   } else {
     const conn = await pool();
-    executeSqlQueriesInDir(seeds.directory, conn);
+    executeMultiSqlFilesInDir(seeds.directory, conn);
   }
-  console.log(`Seeding data scripts complete.`);
+  console.log(`Seeding data scripts complete`);
 };
 
 const pool = async () => {
