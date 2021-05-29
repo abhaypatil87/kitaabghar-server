@@ -1,28 +1,32 @@
-const request = require("request-promise-native");
+const request = require('node-fetch');
 
 const fetchGoogleBooksApiResponse = async (isbn) => {
   const url = new URL("books/v1/volumes", "https://www.googleapis.com");
   url.search = new URLSearchParams({ q: `isbn:${isbn}` }).toString();
   let result;
+  let data;
   try {
-    result = await request(url, { json: true });
+    result = await request(url);
+    data = await result.json();
   } catch (e) {
-    throw e.body.error;
+    throw e.error;
   }
 
-  if (!result.items) return null;
-  return result;
+  if (!data.items) return null;
+  return data;
 };
 
 const fetchOpenLibraryApiResponse = async (isbn) => {
   const url = new URL(`isbn/${isbn}.json`, "https://openlibrary.org/");
   let result;
+  let data;
   try {
-    result = await request(url, { json: true });
+    result = await request(url);
+    data = result.json();
   } catch (e) {
     throw e.error;
   }
-  return result;
+  return data;
 };
 
 const getEndpoint = (isbn, size) => `/b/isbn/${isbn}-${size}.jpg`;
@@ -31,7 +35,7 @@ const fetchOpenLibraryBookCover = async (isbn) => {
   const url = new URL(getEndpoint(isbn, "S"), "http://covers.openlibrary.org");
   url.search = "?default=false";
   try {
-    await request({ uri: url.toString(), followRedirect: false });
+    await request(url.toString(), {method: "POST", follow: 0});
   } catch (e) {
     switch (e.statusCode) {
       case 302: {
@@ -131,6 +135,7 @@ const getBookDataFromResponse = async (response) => {
   }
   return book;
 };
+
 module.exports = {
   fetchGoogleBooksApiResponse,
   fetchOpenLibraryApiResponse,

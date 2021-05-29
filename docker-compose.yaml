@@ -1,0 +1,31 @@
+version: "3"
+
+services:
+  api:
+    container_name: library_api
+    image: library-server
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      database:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+    command: bash -c 'while !</dev/tcp/database/3306; do sleep 1; done; npm start'
+
+  database:
+    container_name: library_database
+    image: mysql:latest
+    restart: always
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+      MYSQL_USER: "api_user"
+      MYSQL_PASSWORD: "password"
+      MYSQL_DATABASE: "home_library"
+    healthcheck:
+      test: ["CMD", 'mysqladmin', 'ping', '-h', 'localhost', '-u$$MYSQL_USER', '-p$$MYSQL_PASSWORD' ]

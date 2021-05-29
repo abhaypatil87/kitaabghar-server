@@ -156,7 +156,7 @@ const pool = async () => {
     }
     return conn;
   } catch (ex) {
-    logger.debug(`ACTIVITY: createPool. FAILED. REASON: ${ex.message}`);
+    logger.info(`ACTIVITY: createPool. FAILED. REASON: ${ex.message}`);
     throw ex;
   }
 };
