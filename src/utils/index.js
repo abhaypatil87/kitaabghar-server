@@ -1,4 +1,4 @@
-const request = require('node-fetch');
+const request = require("node-fetch");
 
 const fetchGoogleBooksApiResponse = async (isbn) => {
   const url = new URL("books/v1/volumes", "https://www.googleapis.com");
@@ -8,8 +8,8 @@ const fetchGoogleBooksApiResponse = async (isbn) => {
   try {
     result = await request(url);
     data = await result.json();
-  } catch (e) {
-    throw e.error;
+  } catch (error) {
+    throw error;
   }
 
   if (!data.items) return null;
@@ -23,8 +23,8 @@ const fetchOpenLibraryApiResponse = async (isbn) => {
   try {
     result = await request(url);
     data = result.json();
-  } catch (e) {
-    throw e.error;
+  } catch (error) {
+    throw error;
   }
   return data;
 };
@@ -35,7 +35,7 @@ const fetchOpenLibraryBookCover = async (isbn) => {
   const url = new URL(getEndpoint(isbn, "S"), "http://covers.openlibrary.org");
   url.search = "?default=false";
   try {
-    await request(url.toString(), {method: "POST", follow: 0});
+    await request(url.toString(), { method: "POST", follow: 0 });
   } catch (e) {
     switch (e.statusCode) {
       case 302: {
@@ -81,10 +81,10 @@ const getBookDataFromResponse = async (response) => {
     // Compute ISBN information
     volumeInfo.industryIdentifiers.forEach((identifier) => {
       if (identifier.type.toLowerCase() === "isbn_10") {
-        book.isbn10 = identifier.identifier;
+        book.isbn_10 = identifier.identifier;
       }
       if (identifier.type.toLowerCase() === "isbn_13") {
-        book.isbn13 = identifier.identifier;
+        book.isbn_13 = identifier.identifier;
       }
     });
 
@@ -93,8 +93,8 @@ const getBookDataFromResponse = async (response) => {
       const authorName = volumeInfo.authors[0];
       const names = authorName.split(" ");
       book.author = {};
-      book.author.firstName = names[0];
-      book.author.lastName = names[1];
+      book.author.first_name = names[0];
+      book.author.last_name = names[1];
     }
   } else {
     /* Consume the Open Library response */
@@ -109,26 +109,26 @@ const getBookDataFromResponse = async (response) => {
     book.page_count = response.openLibrary.number_of_pages || "";
   }
 
-  if (!book.isbn13) {
+  if (!book.isbn_13) {
     if (
       response.openLibrary.isbn_13 !== undefined &&
       response.openLibrary.isbn_13.length > 0
     ) {
-      book.isbn13 = response.openLibrary.isbn_13[0];
+      book.isbn_13 = response.openLibrary.isbn_13[0];
     }
   }
 
-  if (!book.isbn10) {
+  if (!book.isbn_10) {
     if (
       response.openLibrary.isbn_10 !== undefined &&
       response.openLibrary.isbn_10.length > 0
     ) {
-      book.isbn10 = response.openLibrary.isbn_10[0];
+      book.isbn_10 = response.openLibrary.isbn_10[0];
     }
   }
 
   if (!book.thumbnail_url) {
-    const bookCover = await fetchOpenLibraryBookCover(book.isbn13);
+    const bookCover = await fetchOpenLibraryBookCover(book.isbn_13);
     if (bookCover) {
       book.thumbnail_url = bookCover;
     }

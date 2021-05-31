@@ -1,13 +1,20 @@
 {
   "name": "library_server",
   "version": "1.0.0",
-  "description": "NodeJS, Koa, and MySQL",
+  "description": "A backend server written in NodeJS, Koa, and Postgres",
   "main": "index.js",
   "scripts": {
     "start": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "docker-compose build && docker-compose up",
-    "sudo-dev": "sudo docker-compose build && sudo docker-compose up"
+    "dev-up": "docker-compose build && docker-compose up",
+    "dev-down": "docker-compose down"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abhaypatil87/library_server"
+  },
+  "bugs": {
+    "url": "https://github.com/abhaypatil87/library_server/issues"
   },
   "author": "Abhay Patil, <abhaypatil87@gmail.com>",
   "license": "ISC",
@@ -23,9 +30,9 @@
     "koa-useragent": "^4.0.0",
     "node-fetch": "^2.6.1",
     "nodemon": "^2.0.7",
-    "promise-mysql": "^5.0.3"
+    "pg": "^8.6.0"
   },
   "devDependencies": {
-    "prettier": "^2.3.0"
+    "prettier": "2.3.0"
   }
 }

@@ -8,15 +8,15 @@ const {
 } = require("../utils/index");
 
 const bookSchema = Joi.object({
-  id: Joi.number().integer(),
+  book_id: Joi.number().integer(),
   title: Joi.string().required(),
   subtitle: Joi.any(),
-  isbn10: Joi.string(),
-  isbn13: Joi.string(),
+  isbn_10: Joi.string(),
+  isbn_13: Joi.string(),
   description: Joi.string(),
-  pageCount: Joi.number(),
-  authorId: Joi.number().required(),
-  thumbnailUrl: Joi.string(),
+  page_count: Joi.number(),
+  author_id: Joi.number().required(),
+  thumbnail_url: Joi.string(),
 });
 
 const index = async (ctx) => {
@@ -35,7 +35,7 @@ const index = async (ctx) => {
 
 const show = async (ctx) => {
   const { params } = ctx;
-  if (!params.id) ctx.throw(400, "Book ID is required to show details");
+  if (!params.id) ctx.throw(400, "Book ID is required");
 
   // Initialize the Book
   const book = new Book();
@@ -87,9 +87,9 @@ const create = async (ctx) => {
   };
 
   const bookData = await getBookDataFromResponse(response);
-  const author = await getOrCreateAuthor(bookData.author);
+  const authorResult = await getOrCreateAuthor(bookData.author);
 
-  bookData.authorId = author.id;
+  bookData.author_id = authorResult.author_id;
   const book = new Book(bookData);
   const validator = bookSchema.validate(book);
   if (validator.error) {
@@ -98,7 +98,7 @@ const create = async (ctx) => {
 
   try {
     const result = await book.store();
-    book.id = result.insertId;
+    book.book_id = result.rows[0]["book_id"];
     ctx.body = {
       data: {
         book: book,
@@ -119,14 +119,19 @@ const update = async (ctx) => {
   await book.find(params.id);
   if (!book) ctx.throw(`No book found with provided ID=${params.id}`);
 
-  // Replace the author data with the new updated author data
-  book.id = params.id;
-  book.firstName = request.firstName;
-  book.lastName = request.lastName;
+  book.book_id = params.id;
+  book.title = request.title;
+  book.subtitle = request.subtitle;
+  book.description = request.description;
+  book.isbn_10 = request.isbn_10;
+  book.isbn_13 = request.isbn_13;
+  book.page_count = request.page_count;
+  book.author_id = request.author_id;
+  book.thumbnail_url = request.thumbnail_url;
 
   try {
     await book.update();
-    ctx.body = { data: { author: book } };
+    ctx.body = { data: { book: book } };
   } catch (error) {
     ctx.throw(400, error.message);
   }

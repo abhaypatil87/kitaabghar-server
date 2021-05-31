@@ -1,11 +1,10 @@
 const Joi = require("joi");
-
 const { Author } = require("../models/Author");
 
 const authorSchema = Joi.object({
-  id: Joi.number().integer(),
-  firstName: Joi.string().required(),
-  lastName: Joi.string().required(),
+  author_id: Joi.number().integer(),
+  first_name: Joi.string().required(),
+  last_name: Joi.string().required(),
 });
 
 const index = async (ctx) => {
@@ -24,7 +23,7 @@ const index = async (ctx) => {
 
 const show = async (ctx) => {
   const { params } = ctx;
-  if (!params.id) ctx.throw(400, "ID is required");
+  if (!params.id) ctx.throw(400, "Author ID is required");
 
   // Initialize the Author
   const author = new Author();
@@ -51,7 +50,7 @@ const create = async (ctx) => {
 
   try {
     const result = await author.store();
-    author.id = result.insertId;
+    author.author_id = result.rows[0]["author_id"];
     ctx.body = {
       data: {
         author,
@@ -66,16 +65,16 @@ const update = async (ctx) => {
   const { params } = ctx;
   const request = ctx.request.body;
 
-  if (!params.id) ctx.throw(400, "ID is required");
+  if (!params.id) ctx.throw(400, "Author ID is required");
 
   const author = new Author();
   await author.find(params.id);
   if (!author) ctx.throw(400, "Author not found");
 
   // Replace the author data with the new updated author data
-  author.id = params.id;
-  author.firstName = request.firstName;
-  author.lastName = request.lastName;
+  author.author_id = params.id;
+  author.first_name = request.first_name;
+  author.last_name = request.last_name;
 
   try {
     await author.update();
@@ -87,7 +86,7 @@ const update = async (ctx) => {
 
 const remove = async (ctx) => {
   const { params } = ctx;
-  if (!params.id) ctx.throw(400, "ID is required");
+  if (!params.id) ctx.throw(400, "Author ID is required");
 
   const author = new Author();
   await author.find(params.id);
