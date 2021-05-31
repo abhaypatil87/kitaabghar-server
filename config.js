@@ -10,7 +10,6 @@ const SEEDS_PATH = path.resolve(__dirname, "src/database/seeds");
 
 module.exports = {
   testing: {
-    client: "mysql",
     debug: false,
     connection: {
       host: process.env.DB_HOST,
@@ -56,7 +55,6 @@ module.exports = {
     },
   },
   production: {
-    client: "mysql",
     debug: false,
     connection: {
       host: process.env.DB_HOST,

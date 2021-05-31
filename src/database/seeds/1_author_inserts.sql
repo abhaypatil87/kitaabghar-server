@@ -1,4 +1,4 @@
-INSERT INTO authors(firstname, lastname)
+INSERT INTO authors(first_name, last_name)
 VALUES ('Arundhati', 'Roy'),
        ('Patrick', 'Kingsley'),
        ('Anthony', 'Marra'),
@@ -28,4 +28,4 @@ VALUES ('Arundhati', 'Roy'),
        ('Madeline', 'Miller'),
        ('Kate', 'Quinn'),
        ('Haruki', 'Murakami'),
-       ('Ernest', 'Cline');
+       ('Ernest', 'Cline');;

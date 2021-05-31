@@ -1,0 +1,32 @@
+version: "3"
+
+services:
+  api:
+    container_name: library_api
+    image: library-server
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      database:
+        condition: service_started
+    ports:
+      - "4000:4000"
+
+  database:
+    container_name: library_database
+    image: postgres:latest
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: api_user
+      POSTGRES_PASSWORD: "password"
+      POSTGRES_DB: home_library
+
+  dbadmin:
+    image: adminer
+    restart: always
+    ports:
+      - "8088:8080"

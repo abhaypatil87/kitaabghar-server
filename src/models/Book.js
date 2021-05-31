@@ -1,42 +1,43 @@
-const { pool } = require("../database/database");
+const { database } = require("../database/index");
 
 const findById = async (id) => {
-  let connection = await pool();
   try {
-    let book = await connection.query(
-      `SELECT
-         books.book_id as id,
-         books.title,
-         books.subtitle,
-         books.description,
-         books.isbn_10 as isbn10,
-         books.isbn_13 as isbn13,
-         books.page_count as pageCount,
-         books.thumbnail_url as thumbnailUrl,
-         authors.firstname as firstName,
-         authors.lastname as lastName
-      FROM books
-      INNER JOIN authors ON authors.author_id = books.author_id
-      WHERE books.book_id = ?
+    const result = await database.query(
+      `SELECT books.book_id,
+              books.title,
+              books.subtitle,
+              books.description,
+              books.isbn_10,
+              books.isbn_13,
+              books.page_count,
+              books.thumbnail_url,
+              authors.first_name,
+              authors.last_name
+       FROM books
+                INNER JOIN authors ON authors.author_id = books.author_id
+       WHERE books.book_id = $1
       `,
       [id]
     );
-    return JSON.parse(JSON.stringify(book[0]));
+    if (result.rowCount === 0) {
+      return;
+    }
+    return JSON.parse(JSON.stringify(result.rows[0]));
   } catch (error) {
-    throw new Error(error.message);
+    throw error;
   }
 };
 
 class Book {
-  id;
+  book_id;
   title;
   subtitle;
   description;
-  isbn10;
-  isbn13;
-  pageCount;
-  authorId;
-  thumbnailUrl;
+  isbn_10;
+  isbn_13;
+  page_count;
+  author_id;
+  thumbnail_url;
 
   constructor(props) {
     if (!props) return;
@@ -55,94 +56,115 @@ class Book {
   }
 
   async all() {
-    let connection = await pool();
     try {
-      let books = await connection.query(
-        `SELECT 
-            books.book_id as id,
-            books.title,
-            books.subtitle,
-            books.description,
-            books.isbn_10 as isbn10,
-            books.isbn_13 as isbn13,
-            books.page_count as pageCount,
-            books.thumbnail_url as thumbnailUrl,
-            CONCAT(authors.firstname, ' ', authors.lastname) as author
-        FROM books
-        INNER JOIN authors ON authors.author_id = books.author_id
-        ORDER BY books.title`
+      const result = await database.query(
+        `SELECT books.book_id,
+                books.title,
+                books.subtitle,
+                books.description,
+                books.isbn_10,
+                books.isbn_13,
+                books.page_count,
+                books.thumbnail_url,
+                CONCAT(authors.first_name, ' ', authors.last_name) as author
+         FROM books
+                  INNER JOIN authors ON authors.author_id = books.author_id
+         ORDER BY books.title`
       );
-      return JSON.parse(JSON.stringify(books));
+      return JSON.parse(JSON.stringify(result.rows));
     } catch (error) {
-      throw new Error(error.message);
+      throw error;
     }
   }
 
   async store() {
-    let connection = await pool();
     try {
-      await connection.query("START TRANSACTION");
-      return await connection.query(
-        `INSERT INTO books(title, subtitle, description, page_count, isbn_10, isbn_13, author_id, thumbnail_url) 
-         VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
+      await database.query("START TRANSACTION");
+      return await database.query(
+        `INSERT INTO books(title, subtitle, description, page_count, isbn_10, isbn_13, author_id, thumbnail_url)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING book_id`,
         [
           this.title,
           this.subtitle,
           this.description,
-          this.pageCount,
-          this.isbn10,
-          this.isbn13,
-          this.authorId,
-          this.thumbnailUrl,
+          this.page_count,
+          this.isbn_10,
+          this.isbn_13,
+          this.author_id,
+          this.thumbnail_url,
         ]
       );
     } catch (error) {
-      throw new Error(error.message);
+      throw error;
     } finally {
-      connection.query("COMMIT");
+      await database.query("COMMIT");
     }
   }
 
   async update() {
-    let connection = await pool();
     try {
-      await connection.query("START TRANSACTION");
-      await connection.query(
-        `UPDATE books SET firstname=?, lastname=? WHERE book_id=?`,
-        [this.firstName, this.lastName, this.id]
+      await database.query("START TRANSACTION");
+      await database.query(
+        `UPDATE books
+         SET title=$1,
+             subtitle=$2,
+             description=$3,
+             page_count=$4,
+             isbn_10=$5,
+             isbn_13=$6,
+             author_id=$7,
+             thumbnail_url=$8
+         WHERE book_id = $9`,
+        [
+          this.title,
+          this.subtitle,
+          this.description,
+          this.page_count,
+          this.isbn_10,
+          this.isbn_13,
+          this.author_id,
+          this.thumbnail_url,
+          this.book_id,
+        ]
       );
-      await connection.query("COMMIT");
+      await database.query("COMMIT");
       return true;
     } catch (error) {
-      await connection.query("ROLLBACK");
-      throw new Error(error.message);
+      await database.query("ROLLBACK");
+      throw error;
     }
   }
 
   async remove() {
-    let connection = await pool();
     try {
-      await connection.query(`DELETE FROM books WHERE book_id = ?`, [this.id]);
-      await connection.query("COMMIT");
+      await database.query(
+        `DELETE
+                            FROM books
+                            WHERE book_id = $1`,
+        [this.book_id]
+      );
+      await database.query("COMMIT");
       return true;
     } catch (error) {
-      await connection.query("ROLLBACK");
-      throw new Error(error.message);
+      await database.query("ROLLBACK");
+      throw error;
     }
   }
 
   init(props) {
-    this.id = props.id;
+    this.book_id = props.book_id;
     this.title = props.title;
     this.subtitle = props.subtitle;
-    this.isbn10 = props.isbn10;
-    this.isbn13 = props.isbn13;
+    this.isbn_10 = props.isbn_10;
+    this.isbn_13 = props.isbn_13;
     this.description = props.description;
-    this.pageCount = props.page_count;
-    this.authorId = props.authorId;
-    this.thumbnailUrl = props.thumbnail_url;
+    this.page_count = props.page_count;
+    this.author_id = props.author_id;
+    this.thumbnail_url = props.thumbnail_url;
   }
 }
+
 module.exports = {
   findById,
   Book,
