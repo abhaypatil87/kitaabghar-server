@@ -113,9 +113,8 @@ class Book {
              page_count=$4,
              isbn_10=$5,
              isbn_13=$6,
-             author_id=$7,
-             thumbnail_url=$8
-         WHERE book_id = $9`,
+             thumbnail_url=$7
+         WHERE book_id = $8`,
         [
           this.title,
           this.subtitle,
@@ -123,7 +122,6 @@ class Book {
           this.page_count,
           this.isbn_10,
           this.isbn_13,
-          this.author_id,
           this.thumbnail_url,
           this.book_id,
         ]

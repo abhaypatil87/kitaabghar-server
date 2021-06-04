@@ -147,7 +147,6 @@ const update = async (ctx) => {
   book.isbn_10 = request.isbn_10;
   book.isbn_13 = request.isbn_13;
   book.page_count = request.page_count;
-  book.author_id = request.author_id;
   book.thumbnail_url = request.thumbnail_url;
 
   try {
