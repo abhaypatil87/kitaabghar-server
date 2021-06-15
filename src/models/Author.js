@@ -11,7 +11,7 @@ const findById = async (id) => {
       [id]
     );
     if (result.rowCount === 0) {
-      return;
+      return undefined;
     }
     return JSON.parse(JSON.stringify(result.rows[0]));
   } catch (error) {
@@ -31,7 +31,7 @@ const findByName = async (names) => {
           LIMIT 1`
     );
     if (result.rowCount === 0) {
-      return;
+      return undefined;
     }
     return JSON.parse(JSON.stringify(result.rows[0]));
   } catch (error) {
@@ -73,7 +73,9 @@ class Author {
   async find(id) {
     try {
       const result = await findById(id);
-      if (!result) return {};
+      if (!result) {
+        return {};
+      }
       this.init(result);
     } catch (error) {
       throw error;

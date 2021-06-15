@@ -1,12 +1,16 @@
 require("dotenv").config();
 const koa = require("koa");
-const { userAgent } = require("koa-useragent");
+const {
+  userAgent
+} = require("koa-useragent");
 const cors = require("kcors");
 const authorsRouter = require("./src/routes/authors");
 const booksRouter = require("./src/routes/books");
-const { database } = require("./src/database/index");
+const {
+  database
+} = require("./src/database/index");
 
-const port = process.env.PORT || 4000;
+const port = process.env.APP_PORT || 4000;
 
 const app = new koa();
 app.use(async function responseTime(ctx, next) {

@@ -3,9 +3,21 @@ const { Author } = require("../models/Author");
 
 const authorSchema = Joi.object({
   author_id: Joi.number().integer(),
-  first_name: Joi.string().required(),
-  last_name: Joi.string().required(),
+  first_name: Joi.string().min(1).max(50).required(),
+  last_name: Joi.string().min(1).max(50).required(),
 });
+
+const isEmpty = (object) => {
+  return Object.keys(object).length === 0 || JSON.stringify(object) === "{}";
+};
+
+const verifyParameter = (ctx) => {
+  const { params } = ctx;
+  if (!params.id) {
+    ctx.response.status = 400;
+    ctx.throw("Author ID is required");
+  }
+};
 
 const index = async (ctx) => {
   const author = new Author();
@@ -17,27 +29,31 @@ const index = async (ctx) => {
       },
     };
   } catch (error) {
-    ctx.throw(400, error.message);
+    ctx.response.status = 400;
+    ctx.throw(error.message);
   }
 };
 
 const show = async (ctx) => {
-  const { params } = ctx;
-  if (!params.id) ctx.throw(400, "Author ID is required");
-
-  // Initialize the Author
-  const author = new Author();
+  verifyParameter(ctx);
 
   try {
     // Find and show the author
-    await author.find(params.id);
+    const author = new Author();
+    await author.find(ctx.params.id);
+    if (isEmpty(author)) {
+      ctx.response.status = 400;
+      ctx.throw("Author not found");
+    }
+
     ctx.body = {
       data: {
         author,
       },
     };
   } catch (error) {
-    ctx.throw(400, error.message);
+    ctx.response.status = 400;
+    ctx.throw(error.message);
   }
 };
 
@@ -46,7 +62,10 @@ const create = async (ctx) => {
 
   const author = new Author(request);
   const validator = authorSchema.validate(author);
-  if (validator.error) ctx.throw(400, validator.error.details[0].message);
+  if (validator.error) {
+    ctx.response.status = 400;
+    ctx.throw(validator.error.details[0].message);
+  }
 
   try {
     const result = await author.store();
@@ -57,46 +76,59 @@ const create = async (ctx) => {
       },
     };
   } catch (error) {
-    ctx.throw(400, error.message);
+    ctx.response.status = 400;
+    ctx.throw(error.message);
   }
 };
 
 const update = async (ctx) => {
-  const { params } = ctx;
+  verifyParameter(ctx);
+
   const request = ctx.request.body;
 
-  if (!params.id) ctx.throw(400, "Author ID is required");
-
   const author = new Author();
-  await author.find(params.id);
-  if (!author) ctx.throw(400, "Author not found");
+  await author.find(ctx.params.id);
+  if (isEmpty(author)) {
+    ctx.response.status = 400;
+    ctx.throw("Author not found");
+  }
 
   // Replace the author data with the new updated author data
-  author.author_id = params.id;
+  author.author_id = ctx.params.id;
   author.first_name = request.first_name;
   author.last_name = request.last_name;
+
+  const validator = authorSchema.validate(author);
+  if (validator.error) {
+    ctx.response.status = 400;
+    ctx.throw(validator.error.details[0].message);
+  }
 
   try {
     await author.update();
     ctx.body = { data: { author } };
   } catch (error) {
-    ctx.throw(400, error.message);
+    ctx.response.status = 400;
+    ctx.throw(error.message);
   }
 };
 
 const remove = async (ctx) => {
-  const { params } = ctx;
-  if (!params.id) ctx.throw(400, "Author ID is required");
+  verifyParameter(ctx);
 
   const author = new Author();
-  await author.find(params.id);
-  if (!author) ctx.throw(400, "Author not found");
+  await author.find(ctx.params.id);
+  if (isEmpty(author)) {
+    ctx.response.status = 400;
+    ctx.throw("Author not found");
+  }
 
   try {
     await author.remove();
     ctx.body = { data: {} };
   } catch (error) {
-    ctx.throw(400, error.message);
+    ctx.response.status = 400;
+    ctx.throw(error.message);
   }
 };
 
