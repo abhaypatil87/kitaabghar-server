@@ -167,7 +167,7 @@ const remove = async (ctx) => {
 
   try {
     await book.remove();
-    ctx.body = { data: {} };
+    ctx.body = { success: true };
   } catch (error) {
     ctx.throw(400, error.message);
   }
