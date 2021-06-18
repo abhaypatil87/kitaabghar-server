@@ -150,8 +150,16 @@ const update = async (ctx) => {
   book.thumbnail_url = request.thumbnail_url;
 
   try {
-    await book.update();
-    ctx.body = { data: { book: book } };
+    const result = await book.update();
+    if (result.rowCount > 0) {
+      const updatedBook = JSON.parse(JSON.stringify(result.rows[0]));
+      ctx.body = { data: { book: updatedBook } };
+    } else {
+      ctx.throw(
+        400,
+        "Unknown error occurred while updating the record. No rows returned."
+      );
+    }
   } catch (error) {
     ctx.throw(400, error.message);
   }
