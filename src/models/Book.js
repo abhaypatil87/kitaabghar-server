@@ -105,7 +105,7 @@ class Book {
   async update() {
     try {
       await database.query("START TRANSACTION");
-      await database.query(
+      return await database.query(
         `UPDATE books
          SET title=$1,
              subtitle=$2,
@@ -114,7 +114,8 @@ class Book {
              isbn_10=$5,
              isbn_13=$6,
              thumbnail_url=$7
-         WHERE book_id = $8`,
+         WHERE book_id = $8
+         RETURNING *`,
         [
           this.title,
           this.subtitle,
@@ -126,11 +127,11 @@ class Book {
           this.book_id,
         ]
       );
-      await database.query("COMMIT");
-      return true;
     } catch (error) {
       await database.query("ROLLBACK");
       throw error;
+    } finally {
+      await database.query("COMMIT");
     }
   }
 
