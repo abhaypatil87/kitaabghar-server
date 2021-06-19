@@ -1,14 +1,10 @@
 require("dotenv").config();
 const koa = require("koa");
-const {
-  userAgent
-} = require("koa-useragent");
+const { userAgent } = require("koa-useragent");
 const cors = require("kcors");
 const authorsRouter = require("./src/routes/authors");
 const booksRouter = require("./src/routes/books");
-const {
-  database
-} = require("./src/database/index");
+const { database } = require("./src/database/index");
 
 const port = process.env.APP_PORT || 4000;
 
@@ -38,7 +34,12 @@ app.use(async (ctx, next) => {
     await next();
   } catch (err) {
     err.status = err.statusCode || err.status || 500;
-    ctx.body = err.message;
+    ctx.body = {
+      status: "error",
+      message: "",
+      error: err.message,
+      data: {},
+    };
     ctx.app.emit("error", err, ctx);
   }
 });
