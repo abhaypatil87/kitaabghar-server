@@ -1,4 +1,5 @@
 const Joi = require("joi");
+const { SUCCESS } = require("../utils/enums");
 const { getOrCreateAuthor } = require("../models/Author");
 const { Book } = require("../models/Book");
 const {
@@ -19,55 +20,76 @@ const bookSchema = Joi.object({
   thumbnail_url: Joi.string().allow("", null),
 });
 
+const isEmpty = (object) => {
+  return Object.keys(object).length === 0 || JSON.stringify(object) === "{}";
+};
+
+const verifyParameter = (ctx) => {
+  const { params } = ctx;
+  if (!params.id) {
+    ctx.response.status = 400;
+    ctx.throw("Book ID is required");
+  }
+};
+
 const index = async (ctx) => {
   const book = new Book();
   try {
     const result = await book.all();
     ctx.body = {
+      status: SUCCESS,
+      message: "",
       data: {
         books: result,
       },
     };
   } catch (error) {
-    ctx.throw(400, error.message);
+    ctx.response.status = 400;
+    ctx.throw(error.message);
   }
 };
 
 const show = async (ctx) => {
-  const { params } = ctx;
-  if (!params.id) ctx.throw(400, "Book ID is required");
+  verifyParameter(ctx);
 
   const book = new Book();
+  await book.find(ctx.params.id);
 
-  try {
-    await book.find(params.id);
-    ctx.body = {
-      data: {
-        book: book,
-      },
-    };
-  } catch (error) {
-    ctx.throw(400, error.message);
+  if (isEmpty(book)) {
+    ctx.response.status = 400;
+    throw new Error(`Book with ID ${ctx.params.id} not found`);
   }
+
+  ctx.body = {
+    status: SUCCESS,
+    message: "",
+    data: {
+      book,
+    },
+  };
 };
 
 async function createBook(bookData, ctx) {
   const book = new Book(bookData);
   const validator = bookSchema.validate(book);
   if (validator.error) {
-    ctx.throw(400, validator.error);
+    ctx.response.status = 400;
+    ctx.throw(validator.error.details[0].message);
   }
 
   try {
     const result = await book.store();
     book.book_id = result.rows[0]["book_id"];
     ctx.body = {
+      status: SUCCESS,
+      message: "Book created",
       data: {
-        book: book,
+        book,
       },
     };
   } catch (error) {
-    ctx.throw(400, error.message);
+    ctx.response.status = 400;
+    ctx.throw(error.message);
   }
 }
 
@@ -82,7 +104,6 @@ const create = async (ctx) => {
     } catch (e) {
       ctx.response.status = 500;
       ctx.throw(
-        500,
         "Error occurred while fetching data from GoogleBooks API. Please try to disable fetching data from GoogleBooks and try again."
       );
     }
@@ -92,7 +113,6 @@ const create = async (ctx) => {
     } catch (e) {
       ctx.response.status = 500;
       ctx.throw(
-        500,
         "Error occurred while fetching data from OpenLibrary API. Please try to disable fetching data from OpenLibrary and try again."
       );
     }
@@ -126,19 +146,22 @@ const create = async (ctx) => {
 
     await createBook(bookData, ctx);
   } else {
-    ctx.throw(400, "A 13 or 10 digit ISBN is required to create a book");
+    ctx.response.status = 400;
+    ctx.throw("A 13 or 10 digit ISBN is required to create a book");
   }
 };
 
 const update = async (ctx) => {
+  verifyParameter(ctx);
+
   const { params } = ctx;
   const request = ctx.request.body;
 
-  if (!params.id) ctx.throw("Book ID is required");
-
   const book = new Book();
   await book.find(params.id);
-  if (!book) ctx.throw(`No book found with provided ID=${params.id}`);
+  if (isEmpty(book)) {
+    ctx.throw(`Book with ID ${params.id} not found`);
+  }
 
   book.book_id = params.id;
   book.title = request.title;
@@ -153,31 +176,46 @@ const update = async (ctx) => {
     const result = await book.update();
     if (result.rowCount > 0) {
       const updatedBook = JSON.parse(JSON.stringify(result.rows[0]));
-      ctx.body = { data: { book: updatedBook } };
+      ctx.body = {
+        status: SUCCESS,
+        message: "Book updated",
+        data: {
+          book: updatedBook,
+        },
+      };
     } else {
+      ctx.response.status = 400;
       ctx.throw(
-        400,
         "Unknown error occurred while updating the record. No rows returned."
       );
     }
   } catch (error) {
-    ctx.throw(400, error.message);
+    ctx.response.status = 400;
+    ctx.throw(error.message);
   }
 };
 
 const remove = async (ctx) => {
-  const { params } = ctx;
-  if (!params.id) ctx.throw(400, "Book ID is required");
+  verifyParameter(ctx);
 
+  const { params } = ctx;
   const book = new Book();
   await book.find(params.id);
-  if (!book) ctx.throw(400, `No book found with provided ID=${params.id}`);
+  if (isEmpty(book)) {
+    ctx.response.status = 400;
+    throw new Error(`Book with ID ${ctx.params.id} not found`);
+  }
 
   try {
     await book.remove();
-    ctx.body = { success: true };
+    ctx.body = {
+      status: SUCCESS,
+      message: "Book removed",
+      data: {},
+    };
   } catch (error) {
-    ctx.throw(400, error.message);
+    ctx.response.status = 400;
+    ctx.throw(error.message);
   }
 };
 

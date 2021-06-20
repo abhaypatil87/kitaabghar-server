@@ -1,4 +1,5 @@
 const Joi = require("joi");
+const { SUCCESS } = require("../utils/enums");
 const { Author } = require("../models/Author");
 
 const authorSchema = Joi.object({
@@ -24,6 +25,8 @@ const index = async (ctx) => {
   try {
     const result = await author.all();
     ctx.body = {
+      status: SUCCESS,
+      message: "",
       data: {
         authors: result,
       },
@@ -37,24 +40,20 @@ const index = async (ctx) => {
 const show = async (ctx) => {
   verifyParameter(ctx);
 
-  try {
-    // Find and show the author
-    const author = new Author();
-    await author.find(ctx.params.id);
-    if (isEmpty(author)) {
-      ctx.response.status = 400;
-      ctx.throw("Author not found");
-    }
-
-    ctx.body = {
-      data: {
-        author,
-      },
-    };
-  } catch (error) {
+  const author = new Author();
+  await author.find(ctx.params.id);
+  if (isEmpty(author)) {
     ctx.response.status = 400;
-    ctx.throw(error.message);
+    throw new Error(`Author with ID ${ctx.params.id} not found`);
   }
+
+  ctx.body = {
+    status: SUCCESS,
+    message: "",
+    data: {
+      author,
+    },
+  };
 };
 
 const create = async (ctx) => {
@@ -71,6 +70,8 @@ const create = async (ctx) => {
     const result = await author.store();
     author.author_id = result.rows[0]["author_id"];
     ctx.body = {
+      status: SUCCESS,
+      message: "Author created",
       data: {
         author,
       },
@@ -90,11 +91,11 @@ const update = async (ctx) => {
   await author.find(ctx.params.id);
   if (isEmpty(author)) {
     ctx.response.status = 400;
-    ctx.throw("Author not found");
+    throw new Error(`Author with ID ${ctx.params.id} not found`);
   }
 
   // Replace the author data with the new updated author data
-  author.author_id = ctx.params.id;
+  author.author_id = parseInt(ctx.params.id);
   author.first_name = request.first_name;
   author.last_name = request.last_name;
 
@@ -106,7 +107,11 @@ const update = async (ctx) => {
 
   try {
     await author.update();
-    ctx.body = { data: { author } };
+    ctx.body = {
+      status: SUCCESS,
+      message: "Author updated",
+      data: author,
+    };
   } catch (error) {
     ctx.response.status = 400;
     ctx.throw(error.message);
@@ -120,12 +125,16 @@ const remove = async (ctx) => {
   await author.find(ctx.params.id);
   if (isEmpty(author)) {
     ctx.response.status = 400;
-    ctx.throw("Author not found");
+    throw new Error(`Author with ID ${ctx.params.id} not found`);
   }
 
   try {
     await author.remove();
-    ctx.body = { data: {} };
+    ctx.body = {
+      status: SUCCESS,
+      message: "Author removed",
+      data: {},
+    };
   } catch (error) {
     ctx.response.status = 400;
     ctx.throw(error.message);
