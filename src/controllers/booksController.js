@@ -1,4 +1,5 @@
 const Joi = require("joi");
+const { SUCCESS } = require("../utils/enums");
 const { getOrCreateAuthor } = require("../models/Author");
 const { Book } = require("../models/Book");
 const {
@@ -36,9 +37,8 @@ const index = async (ctx) => {
   try {
     const result = await book.all();
     ctx.body = {
-      status: "okay",
+      status: SUCCESS,
       message: "",
-      error: "",
       data: {
         books: result,
       },
@@ -61,9 +61,8 @@ const show = async (ctx) => {
   }
 
   ctx.body = {
-    status: "okay",
+    status: SUCCESS,
     message: "",
-    error: "",
     data: {
       book,
     },
@@ -82,9 +81,8 @@ async function createBook(bookData, ctx) {
     const result = await book.store();
     book.book_id = result.rows[0]["book_id"];
     ctx.body = {
-      status: "okay",
-      message: "Author created",
-      error: "",
+      status: SUCCESS,
+      message: "Book created",
       data: {
         book,
       },
@@ -179,10 +177,11 @@ const update = async (ctx) => {
     if (result.rowCount > 0) {
       const updatedBook = JSON.parse(JSON.stringify(result.rows[0]));
       ctx.body = {
-        status: "okay",
+        status: SUCCESS,
         message: "Book updated",
-        error: "",
-        data: updatedBook,
+        data: {
+          book: updatedBook,
+        },
       };
     } else {
       ctx.response.status = 400;
@@ -210,9 +209,8 @@ const remove = async (ctx) => {
   try {
     await book.remove();
     ctx.body = {
-      status: "okay",
+      status: SUCCESS,
       message: "Book removed",
-      error: "",
       data: {},
     };
   } catch (error) {

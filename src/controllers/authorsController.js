@@ -1,4 +1,5 @@
 const Joi = require("joi");
+const { SUCCESS } = require("../utils/enums");
 const { Author } = require("../models/Author");
 
 const authorSchema = Joi.object({
@@ -24,9 +25,8 @@ const index = async (ctx) => {
   try {
     const result = await author.all();
     ctx.body = {
-      status: "okay",
+      status: SUCCESS,
       message: "",
-      error: "",
       data: {
         authors: result,
       },
@@ -48,9 +48,8 @@ const show = async (ctx) => {
   }
 
   ctx.body = {
-    status: "okay",
+    status: SUCCESS,
     message: "",
-    error: "",
     data: {
       author,
     },
@@ -71,9 +70,8 @@ const create = async (ctx) => {
     const result = await author.store();
     author.author_id = result.rows[0]["author_id"];
     ctx.body = {
-      status: "okay",
+      status: SUCCESS,
       message: "Author created",
-      error: "",
       data: {
         author,
       },
@@ -110,9 +108,8 @@ const update = async (ctx) => {
   try {
     await author.update();
     ctx.body = {
-      status: "okay",
+      status: SUCCESS,
       message: "Author updated",
-      error: "",
       data: author,
     };
   } catch (error) {
@@ -134,9 +131,8 @@ const remove = async (ctx) => {
   try {
     await author.remove();
     ctx.body = {
-      status: "okay",
+      status: SUCCESS,
       message: "Author removed",
-      error: "",
       data: {},
     };
   } catch (error) {
