@@ -6,6 +6,7 @@ const {
   fetchGoogleBooksApiResponse,
   fetchOpenLibraryApiResponse,
   getBookDataFromResponse,
+  getBooksFromResponse,
 } = require("../utils/index");
 
 const bookSchema = Joi.object({
@@ -33,19 +34,47 @@ const verifyParameter = (ctx) => {
 };
 
 const index = async (ctx) => {
-  const book = new Book();
-  try {
-    const result = await book.all();
-    ctx.body = {
-      status: SUCCESS,
-      message: "",
-      data: {
-        books: result,
-      },
-    };
-  } catch (error) {
-    ctx.response.status = 400;
-    ctx.throw(error.message);
+  const query = ctx.query;
+  if (query.keywords) {
+    let gBooksResp;
+    try {
+      gBooksResp = await fetchGoogleBooksApiResponse({
+        keywords: query.keywords,
+      });
+      let response = {};
+      if (gBooksResp.totalItems > 0) {
+        response =
+          gBooksResp.totalItems > 10
+            ? gBooksResp.items.slice(0, 10)
+            : gBooksResp.items;
+      }
+      const bookData = getBooksFromResponse(response);
+      ctx.body = {
+        status: SUCCESS,
+        message: `Found ${bookData.length} matching results`,
+        data: {
+          books: bookData,
+        },
+      };
+    } catch (e) {
+      ctx.response.status = 500;
+      ctx.throw("Error occurred while fetching data from GoogleBooks API");
+    }
+  } else {
+    const book = new Book();
+    try {
+      const result = await book.all();
+      ctx.body = {
+        status: SUCCESS,
+        message: "",
+        data: {
+          books: result,
+        },
+      };
+    } catch (error) {
+      ctx.response.status = 400;
+      ctx.throw(error.message);
+    }
   }
 };
 
@@ -82,7 +111,7 @@ async function createBook(bookData, ctx) {
     book.book_id = result.rows[0]["book_id"];
     ctx.body = {
       status: SUCCESS,
-      message: "Book created",
+      message: `The book '${book.title}' has been added into the library`,
       data: {
         book,
       },
@@ -100,7 +129,7 @@ const create = async (ctx) => {
     let olBooksResp;
     let gBooksResp;
     try {
-      gBooksResp = await fetchGoogleBooksApiResponse(request.isbn);
+      gBooksResp = await fetchGoogleBooksApiResponse({ isbn: request.isbn });
     } catch (e) {
       ctx.response.status = 500;
       ctx.throw(
@@ -178,7 +207,7 @@ const update = async (ctx) => {
       const updatedBook = JSON.parse(JSON.stringify(result.rows[0]));
       ctx.body = {
         status: SUCCESS,
-        message: "Book updated",
+        message: `The book '${updatedBook.title}' has been updated`,
         data: {
           book: updatedBook,
         },
@@ -207,10 +236,11 @@ const remove = async (ctx) => {
   }
 
   try {
+    const bookTitle = book.title;
     await book.remove();
     ctx.body = {
       status: SUCCESS,
-      message: "Book removed",
+      message: `The book '${bookTitle}' has been removed from the library`,
       data: {},
     };
   } catch (error) {

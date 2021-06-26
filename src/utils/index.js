@@ -1,31 +1,32 @@
 const request = require("node-fetch");
 
-const fetchGoogleBooksApiResponse = async (isbn) => {
+const fetchGoogleBooksApiResponse = async (searchParams) => {
   const url = new URL("books/v1/volumes", "https://www.googleapis.com");
-  url.search = new URLSearchParams({ q: `isbn:${isbn}` }).toString();
+  let queryString = "";
+  if (searchParams.hasOwnProperty("isbn")) {
+    queryString = `isbn:${searchParams.isbn}`;
+  } else if (searchParams.hasOwnProperty("keywords")) {
+    queryString = `${searchParams.keywords}`;
+  }
+  url.search = new URLSearchParams({ q: queryString }).toString();
   let result;
-  let data;
   try {
     result = await request(url);
-    data = await result.json();
+    return await result.json();
   } catch (error) {
     throw error;
   }
-
-  return data;
 };
 
 const fetchOpenLibraryApiResponse = async (isbn) => {
   const url = new URL(`isbn/${isbn}.json`, "https://openlibrary.org/");
   let result;
-  let data;
   try {
     result = await request(url);
-    data = result.json();
+    return result.json();
   } catch (error) {
     throw error;
   }
-  return data;
 };
 
 const getEndpoint = (isbn, size) => `/b/isbn/${isbn}-${size}.jpg`;
@@ -59,6 +60,44 @@ const getConvertedBookTitle = (title) => {
       return title;
     }
   }
+  return "";
+};
+
+const getBooksFromResponse = (response) => {
+  if (response) {
+    return response.map((item) => {
+      const book = {};
+      const volumeInfo = item.volumeInfo;
+      // Assign basic information
+      book.title = getConvertedBookTitle(volumeInfo["title"]);
+      book.subtitle = volumeInfo.subtitle || "";
+      book.description = volumeInfo.description || "";
+      book.page_count = volumeInfo.pageCount || 0;
+      if (volumeInfo.imageLinks) {
+        book.thumbnail_url = volumeInfo.imageLinks["thumbnail"];
+      }
+
+      // Compute ISBN information
+      if (volumeInfo.industryIdentifiers) {
+        volumeInfo.industryIdentifiers.forEach((identifier) => {
+          if (identifier.type.toLowerCase() === "isbn_10") {
+            book.isbn_10 = identifier.identifier;
+          }
+          if (identifier.type.toLowerCase() === "isbn_13") {
+            book.isbn_13 = identifier.identifier;
+          }
+        });
+      }
+
+      //Compute Author information
+      if (volumeInfo.authors && Array.isArray(volumeInfo.authors)) {
+        book.author = volumeInfo.authors[0];
+      }
+      return book;
+    });
+  }
+
+  return [];
 };
 
 const getBookDataFromResponse = async (response) => {
@@ -73,9 +112,9 @@ const getBookDataFromResponse = async (response) => {
     // Assign basic information
     book.title = getConvertedBookTitle(volumeInfo.title) || "";
     book.subtitle = volumeInfo.subtitle || "";
-    book.description = volumeInfo.description;
-    book.page_count = volumeInfo.pageCount;
-    book.thumbnail_url = images[0]["thumbnail"];
+    book.description = volumeInfo.description || "";
+    book.page_count = volumeInfo.pageCount || 0;
+    book.thumbnail_url = images[0]["thumbnail"] || "";
 
     // Compute ISBN information
     volumeInfo.industryIdentifiers.forEach((identifier) => {
@@ -92,42 +131,46 @@ const getBookDataFromResponse = async (response) => {
       const authorName = volumeInfo.authors[0];
       book.author = getAuthorNameObject(authorName);
     }
-  } else {
+  }
+  if (response.openLibrary) {
+    const openLibData = response.openLibrary;
     /* Consume the Open Library response */
-    book.title = response.openLibrary.title || "";
-    book.subtitle = response.openLibrary.subtitle || "";
-    if (
-      response.openLibrary.description &&
-      response.openLibrary.description.value
-    ) {
-      book.description = response.openLibrary.description.value || "";
+    if (book.title === "") {
+      book.title = getConvertedBookTitle(openLibData.title) || "";
     }
-    book.page_count = response.openLibrary.number_of_pages || "";
+    if (book.subtitle === "") {
+      book.subtitle = openLibData.subtitle || "";
+    }
+    if (book.description === "") {
+      if (openLibData.description && openLibData.description.value) {
+        book.description = openLibData.description.value || "";
+      }
+    }
 
-    if (response.openLibrary.by_statement) {
-      book.author = getAuthorNameObject(response.openLibrary.by_statement);
+    if (book.page_count === 0) {
+      book.page_count = openLibData.number_of_pages || 0;
+    }
+
+    if (book.author === "") {
+      if (openLibData.by_statement) {
+        book.author = getAuthorNameObject(openLibData.by_statement);
+      }
+    }
+
+    if (!book.isbn_13) {
+      if (openLibData.isbn_13 && openLibData.isbn_13.length > 0) {
+        book.isbn_13 = openLibData.isbn_13[0];
+      }
+    }
+
+    if (!book.isbn_10) {
+      if (openLibData.isbn_10 && openLibData.isbn_10.length > 0) {
+        book.isbn_10 = openLibData.isbn_10[0];
+      }
     }
   }
 
-  if (!book.isbn_13) {
-    if (
-      response.openLibrary.isbn_13 &&
-      response.openLibrary.isbn_13.length > 0
-    ) {
-      book.isbn_13 = response.openLibrary.isbn_13[0];
-    }
-  }
-
-  if (!book.isbn_10) {
-    if (
-      response.openLibrary.isbn_10 &&
-      response.openLibrary.isbn_10.length > 0
-    ) {
-      book.isbn_10 = response.openLibrary.isbn_10[0];
-    }
-  }
-
-  if (!book.thumbnail_url) {
+  if (book.thumbnail_url === "") {
     let bookCover13 = await fetchOpenLibraryBookCover(book.isbn_13);
     let bookCover10 = await fetchOpenLibraryBookCover(book.isbn_10);
 
@@ -151,4 +194,5 @@ module.exports = {
   fetchGoogleBooksApiResponse,
   fetchOpenLibraryApiResponse,
   getBookDataFromResponse,
+  getBooksFromResponse,
 };
