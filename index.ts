@@ -1,15 +1,15 @@
 require("dotenv").config();
-const koa = require("koa");
-const { userAgent } = require("koa-useragent");
-const cors = require("kcors");
-const authorsRouter = require("./src/routes/authors");
-const booksRouter = require("./src/routes/books");
-const { ERROR } = require("./src/utils/enums");
-const { database } = require("./src/database/index");
+import * as Koa from "koa";
+import * as cors from "@koa/cors";
+import { userAgent } from "koa-useragent";
+
+import database from "./src/database";
+import { router } from "./router";
+import { ERROR } from "./src/utils/enums";
 
 const port = process.env.APP_PORT || 4000;
+const app = new Koa();
 
-const app = new koa();
 app.use(async function responseTime(ctx, next) {
   const t1 = Date.now();
   await next();
@@ -44,10 +44,9 @@ app.use(async (ctx, next) => {
   }
 });
 
-app.use(authorsRouter.routes());
-app.use(authorsRouter.allowedMethods());
-app.use(booksRouter.routes());
-app.use(booksRouter.allowedMethods());
+app.use(require("koa-bodyparser")());
+app.use(router.routes());
+app.use(router.allowedMethods());
 
 app.listen(port, async () => {
   await database.connect();

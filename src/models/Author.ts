@@ -1,6 +1,7 @@
-const { database } = require("../database/index");
+import database from "../database";
+import { AuthorNameObject } from "../utils/declarations";
 
-const findById = async (id) => {
+const findById = async (id: number) => {
   try {
     const result = await database.query(
       `
@@ -19,7 +20,7 @@ const findById = async (id) => {
   }
 };
 
-const findByName = async (names) => {
+const findByName = async (names: Array<string>) => {
   try {
     let result = await database.query(
       `
@@ -39,7 +40,7 @@ const findByName = async (names) => {
   }
 };
 
-const getOrCreateAuthor = async (bookAuthor) => {
+const getOrCreateAuthor = async (bookAuthor: AuthorNameObject) => {
   let author;
   if (bookAuthor !== undefined) {
     try {
@@ -149,8 +150,4 @@ class Author {
   }
 }
 
-module.exports = {
-  findByName,
-  getOrCreateAuthor,
-  Author,
-};
+export { findByName, getOrCreateAuthor, Author };

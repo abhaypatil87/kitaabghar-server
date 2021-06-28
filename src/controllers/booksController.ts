@@ -1,13 +1,15 @@
-const Joi = require("joi");
-const { SUCCESS } = require("../utils/enums");
-const { getOrCreateAuthor } = require("../models/Author");
-const { Book } = require("../models/Book");
-const {
+import { BookResponse, BookWithAuthorName } from "../utils/declarations";
+
+import * as Joi from "joi";
+import { SUCCESS } from "../utils/enums";
+import { getOrCreateAuthor } from "../models/Author";
+import { Book } from "../models/Book";
+import {
   fetchGoogleBooksApiResponse,
   fetchOpenLibraryApiResponse,
   getBookDataFromResponse,
   getBooksFromResponse,
-} = require("../utils/index");
+} from "../utils";
 
 const bookSchema = Joi.object({
   book_id: Joi.number().integer(),
@@ -41,21 +43,21 @@ const index = async (ctx) => {
       gBooksResp = await fetchGoogleBooksApiResponse({
         keywords: query.keywords,
       });
-      let response = {};
       if (gBooksResp.totalItems > 0) {
-        response =
+        const response =
           gBooksResp.totalItems > 10
             ? gBooksResp.items.slice(0, 10)
             : gBooksResp.items;
+
+        const bookData: BookWithAuthorName[] = getBooksFromResponse(response);
+        ctx.body = {
+          status: SUCCESS,
+          message: `Found ${bookData.length} matching results`,
+          data: {
+            books: bookData,
+          },
+        };
       }
-      const bookData = getBooksFromResponse(response);
-      ctx.body = {
-        status: SUCCESS,
-        message: `Found ${bookData.length} matching results`,
-        data: {
-          books: bookData,
-        },
-      };
     } catch (e) {
       ctx.response.status = 500;
       ctx.throw("Error occurred while fetching data from GoogleBooks API");
@@ -146,7 +148,7 @@ const create = async (ctx) => {
       );
     }
 
-    const response = {};
+    const response = {} as BookResponse;
 
     if (gBooksResp.totalItems > 0) {
       response.google = gBooksResp;
@@ -157,8 +159,7 @@ const create = async (ctx) => {
 
     const bookData = await getBookDataFromResponse(response);
     const authorResult = await getOrCreateAuthor(bookData.author);
-
-    bookData.author_id = authorResult.author_id;
+    bookData.author.author_id = authorResult.author_id;
     await createBook(bookData, ctx);
   } else if (
     request.hasOwnProperty("isbn_10") ||
@@ -171,7 +172,7 @@ const create = async (ctx) => {
     bookData.author.first_name = names[0];
     bookData.author.last_name = names[1];
     const authorResult = await getOrCreateAuthor(bookData.author);
-    bookData.author_id = authorResult.author_id;
+    bookData.author.author_id = authorResult.author_id;
 
     await createBook(bookData, ctx);
   } else {
@@ -249,10 +250,12 @@ const remove = async (ctx) => {
   }
 };
 
-module.exports = {
+const booksController = {
   index,
   show,
   create,
   update,
   remove,
 };
+
+export default booksController;

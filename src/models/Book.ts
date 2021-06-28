@@ -1,4 +1,4 @@
-const { database } = require("../database/index");
+import database from "../database";
 
 const findById = async (id) => {
   try {
@@ -39,7 +39,7 @@ class Book {
   author_id;
   thumbnail_url;
 
-  constructor(props) {
+  constructor(props?: object) {
     if (!props) return;
 
     this.init(props);
@@ -159,12 +159,9 @@ class Book {
     this.isbn_13 = props.isbn_13;
     this.description = props.description;
     this.page_count = props.page_count;
-    this.author_id = props.author_id;
+    this.author_id = props.author.author_id;
     this.thumbnail_url = props.thumbnail_url;
   }
 }
 
-module.exports = {
-  findById,
-  Book,
-};
+export { findById, Book };

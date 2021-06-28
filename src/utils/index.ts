@@ -1,6 +1,12 @@
+import {
+  BookResponse,
+  BookWithAuthorName,
+  BookWithAuthorObject,
+} from "./declarations";
+
 const request = require("node-fetch");
 
-const fetchGoogleBooksApiResponse = async (searchParams) => {
+export const fetchGoogleBooksApiResponse = async (searchParams) => {
   const url = new URL("books/v1/volumes", "https://www.googleapis.com");
   let queryString = "";
   if (searchParams.hasOwnProperty("isbn")) {
@@ -18,7 +24,7 @@ const fetchGoogleBooksApiResponse = async (searchParams) => {
   }
 };
 
-const fetchOpenLibraryApiResponse = async (isbn) => {
+export const fetchOpenLibraryApiResponse = async (isbn) => {
   const url = new URL(`isbn/${isbn}.json`, "https://openlibrary.org/");
   let result;
   try {
@@ -50,58 +56,63 @@ const fetchOpenLibraryBookCover = async (isbn) => {
     throw e;
   }
 };
-const getConvertedBookTitle = (title) => {
-  if (title !== null && title !== undefined) {
-    let words = title.split(" ");
-    let firstWord = words.shift().toLowerCase();
-    if (firstWord === "a" || firstWord === "an" || firstWord === "the") {
-      return words.join(" ") + ", " + firstWord;
-    } else {
-      return title;
+
+const getConvertedBookTitle: (title: string) => string = (title: string) => {
+  const words = title.split(" ");
+  if (words.length === 1) {
+    return title;
+  }
+
+  let firstWord = words.shift();
+  if (
+    firstWord &&
+    (firstWord.toLowerCase() === "a" ||
+      firstWord.toLowerCase() === "an" ||
+      firstWord.toLowerCase() === "the")
+  ) {
+    return words.join(" ") + ", " + firstWord;
+  } else {
+    return title;
+  }
+};
+
+export const getBooksFromResponse: (response) => BookWithAuthorName[] = (
+  response
+) => {
+  return response.map((item) => {
+    const book = {} as BookWithAuthorName;
+    const volumeInfo = item.volumeInfo;
+    // Assign basic information
+    book.title = getConvertedBookTitle(volumeInfo["title"]);
+    book.subtitle = volumeInfo.subtitle || "";
+    book.description = volumeInfo.description || "";
+    book.page_count = volumeInfo.pageCount || 0;
+    if (volumeInfo.imageLinks) {
+      book.thumbnail_url = volumeInfo.imageLinks["thumbnail"];
     }
-  }
-  return "";
+
+    // Compute ISBN information
+    if (volumeInfo.industryIdentifiers) {
+      volumeInfo.industryIdentifiers.forEach((identifier) => {
+        if (identifier.type.toLowerCase() === "isbn_10") {
+          book.isbn_10 = identifier.identifier;
+        }
+        if (identifier.type.toLowerCase() === "isbn_13") {
+          book.isbn_13 = identifier.identifier;
+        }
+      });
+    }
+
+    //Compute Author information
+    if (volumeInfo.authors && Array.isArray(volumeInfo.authors)) {
+      book.author = volumeInfo.authors[0];
+    }
+    return book;
+  });
 };
 
-const getBooksFromResponse = (response) => {
-  if (response) {
-    return response.map((item) => {
-      const book = {};
-      const volumeInfo = item.volumeInfo;
-      // Assign basic information
-      book.title = getConvertedBookTitle(volumeInfo["title"]);
-      book.subtitle = volumeInfo.subtitle || "";
-      book.description = volumeInfo.description || "";
-      book.page_count = volumeInfo.pageCount || 0;
-      if (volumeInfo.imageLinks) {
-        book.thumbnail_url = volumeInfo.imageLinks["thumbnail"];
-      }
-
-      // Compute ISBN information
-      if (volumeInfo.industryIdentifiers) {
-        volumeInfo.industryIdentifiers.forEach((identifier) => {
-          if (identifier.type.toLowerCase() === "isbn_10") {
-            book.isbn_10 = identifier.identifier;
-          }
-          if (identifier.type.toLowerCase() === "isbn_13") {
-            book.isbn_13 = identifier.identifier;
-          }
-        });
-      }
-
-      //Compute Author information
-      if (volumeInfo.authors && Array.isArray(volumeInfo.authors)) {
-        book.author = volumeInfo.authors[0];
-      }
-      return book;
-    });
-  }
-
-  return [];
-};
-
-const getBookDataFromResponse = async (response) => {
-  const book = {};
+export const getBookDataFromResponse = async (response: BookResponse) => {
+  const book = {} as BookWithAuthorObject;
   /* Consume the Google Books API response */
   if (response.google && response.google.totalItems > 0) {
     const volumeInfo = response.google.items[0].volumeInfo;
@@ -151,7 +162,7 @@ const getBookDataFromResponse = async (response) => {
       book.page_count = openLibData.number_of_pages || 0;
     }
 
-    if (book.author === "") {
+    if (book.author.first_name === "" && book.author.last_name === "") {
       if (openLibData.by_statement) {
         book.author = getAuthorNameObject(openLibData.by_statement);
       }
@@ -180,19 +191,20 @@ const getBookDataFromResponse = async (response) => {
       ? bookCover10
       : "";
   }
+  console.log(book);
   return book;
 };
 
-const getAuthorNameObject = (author) => {
+const getAuthorNameObject = (author: string) => {
   const names = author.split(" ");
+  if (names.length === 1) {
+    return {
+      first_name: names[0],
+      last_name: names[0],
+    };
+  }
   return {
     first_name: names[0],
     last_name: names[1],
   };
-};
-module.exports = {
-  fetchGoogleBooksApiResponse,
-  fetchOpenLibraryApiResponse,
-  getBookDataFromResponse,
-  getBooksFromResponse,
 };

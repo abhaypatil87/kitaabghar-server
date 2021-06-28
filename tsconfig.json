@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "outDir": "./dist/",
+    "module": "commonjs",
+    "sourceMap": true,
+    "strictNullChecks": true,
+    "target": "ES2018",
+    "allowJs": true,
+    "checkJs": true,
+    "newLine": "lf"
+  },
+  "include": [
+    "src/",
+    "./*.ts",
+    "./*.js",
+    ".env"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

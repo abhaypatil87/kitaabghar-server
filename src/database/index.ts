@@ -1,12 +1,14 @@
-const pg = require("pg");
-const path = require("path");
-const fs = require("fs").promises;
-const Logger = require("../utils/logger");
+import * as pg from "pg";
+import * as path from "path";
+import { promises as fs } from "fs";
+import bunyanLogger from "../utils/logger";
+import environment from "../../config";
 
-const environment = process.env.NODE_ENV || "development";
-const { connection, migrations, seeds } = require("../../config")[environment];
-
-const logger = Logger.child({ component: "database" });
+const env = process.env.NODE_ENV || "development";
+const connection = environment[env].connection;
+const migrations = environment[env].migrations;
+const seeds = environment[env].seeds;
+const logger = bunyanLogger.child({ component: "database" });
 
 const COMMIT = Symbol("COMMIT");
 const ROLLBACK = Symbol("ROLLBACK");
@@ -39,10 +41,10 @@ class Database {
     return await this.pool.connect();
   }
 
-  async query(text, values) {
+  async query(query: string, values?: Array<any>) {
     const conn = await this.connect();
     try {
-      return await conn.query(text, values);
+      return await conn.query(query, values);
     } finally {
       conn.release();
     }
@@ -125,7 +127,7 @@ class Database {
  * @returns {String[]} List of file names, sorted naturally
  */
 const readFiles = async (dir) => {
-  const sqlFiles = [];
+  const sqlFiles = [] as Array<string>;
   const files = await fs.readdir(dir);
 
   for (const file of files) {
@@ -155,9 +157,9 @@ const isSqlFile = (fileName) => {
  * @param options An Object holding the configuration, with below options
  * filter: An array of file names to omit
  */
-const executeMultiSqlFilesInDir = async (dir, conn, options) => {
-  let filesToFilter = [];
-  if (typeof arguments[2] === "object") {
+const executeMultiSqlFilesInDir = async (dir, conn, options?: object) => {
+  let filesToFilter = [] as Array<string>;
+  if (typeof options === "object") {
     for (const property in options) {
       if (property === "filter") {
         filesToFilter = [...options["filter"]];
@@ -200,7 +202,7 @@ const migrateDatabase = async (conn) => {
        ORDER BY script_name
       `
     );
-    const fileNames = [];
+    const fileNames = [] as Array<string>;
     for (const row of result.rows) {
       const script = JSON.parse(JSON.stringify(row));
       fileNames.push(script.script_name);
@@ -223,6 +225,4 @@ const initialiseDatabase = async (conn, dbName) => {
 };
 
 const database = new Database();
-module.exports = {
-  database: database,
-};
+export default database;
