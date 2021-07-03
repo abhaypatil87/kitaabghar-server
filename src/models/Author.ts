@@ -3,7 +3,7 @@ import { AuthorNameObject } from "../utils/declarations";
 
 const findById = async (id: number) => {
   try {
-    const result = await database.query(
+    const { results } = await database.query(
       `
           SELECT author_id, first_name, last_name
           FROM authors
@@ -11,10 +11,10 @@ const findById = async (id: number) => {
       `,
       [id]
     );
-    if (result.rowCount === 0) {
+    if (results.length === 0) {
       return undefined;
     }
-    return JSON.parse(JSON.stringify(result.rows[0]));
+    return JSON.parse(JSON.stringify(results[0]));
   } catch (error) {
     throw error;
   }
@@ -22,7 +22,7 @@ const findById = async (id: number) => {
 
 const findByName = async (names: Array<string>) => {
   try {
-    let result = await database.query(
+    let { results } = await database.query(
       `
           SELECT author_id, first_name, last_name
           FROM authors
@@ -31,10 +31,10 @@ const findByName = async (names: Array<string>) => {
           ORDER BY first_name
           LIMIT 1`
     );
-    if (result.rowCount === 0) {
+    if (results.length === 0) {
       return undefined;
     }
-    return JSON.parse(JSON.stringify(result.rows[0]));
+    return JSON.parse(JSON.stringify(results[0]));
   } catch (error) {
     throw error;
   }
@@ -42,20 +42,18 @@ const findByName = async (names: Array<string>) => {
 
 const getOrCreateAuthor = async (bookAuthor: AuthorNameObject) => {
   let author;
-  if (bookAuthor !== undefined) {
-    try {
-      author = await findByName([
-        bookAuthor.first_name.toLowerCase(),
-        bookAuthor.last_name.toLowerCase(),
-      ]);
-      if (author === undefined) {
-        author = new Author(bookAuthor);
-        const result = await author.store();
-        author.author_id = result.rows[0]["author_id"];
-      }
-    } catch (error) {
-      throw error;
+  try {
+    author = await findByName([
+      bookAuthor.first_name.toLowerCase(),
+      bookAuthor.last_name.toLowerCase(),
+    ]);
+    if (author === undefined) {
+      author = new Author(bookAuthor);
+      const result = await author.store();
+      author.author_id = result.rows[0]["author_id"];
     }
+  } catch (error) {
+    throw error;
   }
   return author;
 };
@@ -85,12 +83,12 @@ class Author {
 
   async all() {
     try {
-      const result = await database.query(
+      const { results } = await database.query(
         `SELECT author_id, first_name, last_name
          FROM authors
          ORDER BY first_name`
       );
-      return JSON.parse(JSON.stringify(result.rows));
+      return JSON.parse(JSON.stringify(results));
     } catch (error) {
       throw error;
     }

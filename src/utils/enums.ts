@@ -1,2 +1,2 @@
-export const ERROR = "error";
-export const SUCCESS = "success";
+export const ERROR: string = "error";
+export const SUCCESS: string = "success";

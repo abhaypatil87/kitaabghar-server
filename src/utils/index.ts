@@ -191,7 +191,6 @@ export const getBookDataFromResponse = async (response: BookResponse) => {
       ? bookCover10
       : "";
   }
-  console.log(book);
   return book;
 };
 

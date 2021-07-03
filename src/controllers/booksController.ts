@@ -1,4 +1,9 @@
-import { BookResponse, BookWithAuthorName } from "../utils/declarations";
+import {
+  AuthorNameObject,
+  BookResponse,
+  BookWithAuthorName,
+  BookWithAuthorObject,
+} from "../utils/declarations";
 
 import * as Joi from "joi";
 import { SUCCESS } from "../utils/enums";
@@ -100,7 +105,7 @@ const show = async (ctx) => {
   };
 };
 
-async function createBook(bookData, ctx) {
+async function createBook(bookData: BookWithAuthorObject, ctx) {
   const book = new Book(bookData);
   const validator = bookSchema.validate(book);
   if (validator.error) {
@@ -109,8 +114,8 @@ async function createBook(bookData, ctx) {
   }
 
   try {
-    const result = await book.store();
-    book.book_id = result.rows[0]["book_id"];
+    const { results } = await book.store();
+    book.book_id = results[0]["book_id"];
     ctx.body = {
       status: SUCCESS,
       message: `The book '${book.title}' has been added into the library`,
@@ -166,15 +171,17 @@ const create = async (ctx) => {
     request.hasOwnProperty("isbn_13")
   ) {
     /* Or, create with a manual entry */
-    const bookData = request;
-    const names = bookData.author.split(" ");
-    bookData.author = {};
-    bookData.author.first_name = names[0];
-    bookData.author.last_name = names[1];
-    const authorResult = await getOrCreateAuthor(bookData.author);
-    bookData.author.author_id = authorResult.author_id;
+    const bookObject: BookWithAuthorObject = { ...request };
+    const names = request.author.split(" ");
 
-    await createBook(bookData, ctx);
+    // re-initialise author with the correct type as author is a string coming in from the request
+    bookObject.author = {} as AuthorNameObject;
+    bookObject.author.first_name = names[0];
+    bookObject.author.last_name = names[1];
+
+    const authorResult = await getOrCreateAuthor(bookObject.author);
+    bookObject.author.author_id = authorResult.author_id;
+    await createBook(bookObject, ctx);
   } else {
     ctx.response.status = 400;
     ctx.throw("A 13 or 10 digit ISBN is required to create a book");
@@ -203,9 +210,9 @@ const update = async (ctx) => {
   book.thumbnail_url = request.thumbnail_url;
 
   try {
-    const result = await book.update();
-    if (result.rowCount > 0) {
-      const updatedBook = JSON.parse(JSON.stringify(result.rows[0]));
+    const { results } = await book.update();
+    if (results.length > 0) {
+      const updatedBook = JSON.parse(JSON.stringify(results[0]));
       ctx.body = {
         status: SUCCESS,
         message: `The book '${updatedBook.title}' has been updated`,

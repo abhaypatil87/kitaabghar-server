@@ -52,7 +52,7 @@ const environment = {
     },
     logger: {
       name: "Library Server",
-      level: "info",
+      level: "trace",
     },
   },
   production: {

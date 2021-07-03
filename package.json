@@ -4,7 +4,7 @@
   "description": "A backend server written in NodeJS, Koa, and Postgres",
   "main": "index.ts",
   "scripts": {
-    "build": "tsc --build tsconfig.json && cp -r ./src/database/migrations dist/src/database/migrations && cp -r src/database/seeds dist/src/database/seeds",
+    "build": "tsc --build tsconfig.json && cp -r ./src/database/migrations dist/src/database/ && cp -r src/database/seeds dist/src/database/",
     "start": "npm run build && node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev-up": "docker-compose build && docker-compose up",

@@ -6,9 +6,11 @@ import { userAgent } from "koa-useragent";
 import database from "./src/database";
 import { router } from "./router";
 import { ERROR } from "./src/utils/enums";
+import bunyanLogger from "./src/utils/logger";
 
 const port = process.env.APP_PORT || 4000;
 const app = new Koa();
+const logger = bunyanLogger.child({ component: "index" });
 
 app.use(async function responseTime(ctx, next) {
   const t1 = Date.now();
@@ -50,5 +52,5 @@ app.use(router.allowedMethods());
 
 app.listen(port, async () => {
   await database.connect();
-  await console.log(`Library Server listening on port ${port}`);
+  await logger.info(`Library Server listening on port ${port}`);
 });

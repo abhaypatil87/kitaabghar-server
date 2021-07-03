@@ -5,6 +5,7 @@ interface AuthorNameObject {
 }
 
 interface Book {
+  book_id?: number;
   title: string;
   subtitle: string;
   description: string;
