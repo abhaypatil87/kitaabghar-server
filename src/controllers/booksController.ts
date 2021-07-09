@@ -1,13 +1,21 @@
-const Joi = require("joi");
-const { SUCCESS } = require("../utils/enums");
-const { getOrCreateAuthor } = require("../models/Author");
-const { Book } = require("../models/Book");
-const {
+import {
+  AuthorNameObject,
+  BookResponse,
+  BookWithAuthorName,
+  BookWithAuthorObject,
+} from "../utils/declarations";
+
+import * as Joi from "joi";
+import { SUCCESS } from "../utils/enums";
+import { getOrCreateAuthor } from "../models/Author";
+import { Book } from "../models/Book";
+import {
   fetchGoogleBooksApiResponse,
   fetchOpenLibraryApiResponse,
   getBookDataFromResponse,
   getBooksFromResponse,
-} = require("../utils/index");
+} from "../utils";
+import { ThirdPartyApi } from "../models/ThirdPartyApi";
 
 const bookSchema = Joi.object({
   book_id: Joi.number().integer(),
@@ -41,21 +49,21 @@ const index = async (ctx) => {
       gBooksResp = await fetchGoogleBooksApiResponse({
         keywords: query.keywords,
       });
-      let response = {};
       if (gBooksResp.totalItems > 0) {
-        response =
+        const response =
           gBooksResp.totalItems > 10
             ? gBooksResp.items.slice(0, 10)
             : gBooksResp.items;
+
+        const bookData: BookWithAuthorName[] = getBooksFromResponse(response);
+        ctx.body = {
+          status: SUCCESS,
+          message: `Found ${bookData.length} matching results`,
+          data: {
+            books: bookData,
+          },
+        };
       }
-      const bookData = getBooksFromResponse(response);
-      ctx.body = {
-        status: SUCCESS,
-        message: `Found ${bookData.length} matching results`,
-        data: {
-          books: bookData,
-        },
-      };
     } catch (e) {
       ctx.response.status = 500;
       ctx.throw("Error occurred while fetching data from GoogleBooks API");
@@ -98,7 +106,7 @@ const show = async (ctx) => {
   };
 };
 
-async function createBook(bookData, ctx) {
+async function createBook(bookData: BookWithAuthorObject, ctx) {
   const book = new Book(bookData);
   const validator = bookSchema.validate(book);
   if (validator.error) {
@@ -107,8 +115,8 @@ async function createBook(bookData, ctx) {
   }
 
   try {
-    const result = await book.store();
-    book.book_id = result.rows[0]["book_id"];
+    const { results } = await book.store();
+    book.book_id = results[0]["book_id"];
     ctx.body = {
       status: SUCCESS,
       message: `The book '${book.title}' has been added into the library`,
@@ -128,27 +136,34 @@ const create = async (ctx) => {
   if (request.hasOwnProperty("isbn")) {
     let olBooksResp;
     let gBooksResp;
-    try {
-      gBooksResp = await fetchGoogleBooksApiResponse({ isbn: request.isbn });
-    } catch (e) {
-      ctx.response.status = 500;
-      ctx.throw(
-        "Error occurred while fetching data from GoogleBooks API. Please try to disable fetching data from GoogleBooks and try again."
-      );
+    let thirdPartyApi = new ThirdPartyApi(null);
+    const result = await thirdPartyApi.all();
+
+    if (result["google_books"]) {
+      try {
+        gBooksResp = await fetchGoogleBooksApiResponse({ isbn: request.isbn });
+      } catch (e) {
+        ctx.response.status = 500;
+        ctx.throw(
+          "Error occurred while fetching data from GoogleBooks API. Please try to disable fetching data from GoogleBooks and try again."
+        );
+      }
     }
 
-    try {
-      olBooksResp = await fetchOpenLibraryApiResponse(request.isbn);
-    } catch (e) {
-      ctx.response.status = 500;
-      ctx.throw(
-        "Error occurred while fetching data from OpenLibrary API. Please try to disable fetching data from OpenLibrary and try again."
-      );
+    if (result["open_library"]) {
+      try {
+        olBooksResp = await fetchOpenLibraryApiResponse(request.isbn);
+      } catch (e) {
+        ctx.response.status = 500;
+        ctx.throw(
+          "Error occurred while fetching data from OpenLibrary API. Please try to disable fetching data from OpenLibrary and try again."
+        );
+      }
     }
 
-    const response = {};
+    const response = {} as BookResponse;
 
-    if (gBooksResp.totalItems > 0) {
+    if (gBooksResp && gBooksResp.totalItems > 0) {
       response.google = gBooksResp;
     }
     if (olBooksResp) {
@@ -157,23 +172,24 @@ const create = async (ctx) => {
 
     const bookData = await getBookDataFromResponse(response);
     const authorResult = await getOrCreateAuthor(bookData.author);
-
-    bookData.author_id = authorResult.author_id;
+    bookData.author.author_id = authorResult.author_id;
     await createBook(bookData, ctx);
   } else if (
     request.hasOwnProperty("isbn_10") ||
     request.hasOwnProperty("isbn_13")
   ) {
     /* Or, create with a manual entry */
-    const bookData = request;
-    const names = bookData.author.split(" ");
-    bookData.author = {};
-    bookData.author.first_name = names[0];
-    bookData.author.last_name = names[1];
-    const authorResult = await getOrCreateAuthor(bookData.author);
-    bookData.author_id = authorResult.author_id;
+    const bookObject: BookWithAuthorObject = { ...request };
+    const names = request.author.split(" ");
 
-    await createBook(bookData, ctx);
+    // re-initialise author with the correct type as author is a string coming in from the request
+    bookObject.author = {} as AuthorNameObject;
+    bookObject.author.first_name = names[0];
+    bookObject.author.last_name = names[1];
+
+    const authorResult = await getOrCreateAuthor(bookObject.author);
+    bookObject.author.author_id = authorResult.author_id;
+    await createBook(bookObject, ctx);
   } else {
     ctx.response.status = 400;
     ctx.throw("A 13 or 10 digit ISBN is required to create a book");
@@ -202,9 +218,9 @@ const update = async (ctx) => {
   book.thumbnail_url = request.thumbnail_url;
 
   try {
-    const result = await book.update();
-    if (result.rowCount > 0) {
-      const updatedBook = JSON.parse(JSON.stringify(result.rows[0]));
+    const { results } = await book.update();
+    if (results.length > 0) {
+      const updatedBook = JSON.parse(JSON.stringify(results[0]));
       ctx.body = {
         status: SUCCESS,
         message: `The book '${updatedBook.title}' has been updated`,
@@ -249,10 +265,12 @@ const remove = async (ctx) => {
   }
 };
 
-module.exports = {
+const booksController = {
   index,
   show,
   create,
   update,
   remove,
 };
+
+export default booksController;

@@ -1,14 +1,15 @@
-const path = require("path");
+import { resolve } from "path";
+import { config } from "dotenv";
+
 if (!process.env.NODE_ENV) {
   throw new Error("NODE_ENV not set");
 }
 
-require("dotenv").config();
+config();
+const MIGRATIONS_PATH = resolve(__dirname, "src/database/migrations");
+const SEEDS_PATH = resolve(__dirname, "src/database/seeds");
 
-const MIGRATIONS_PATH = path.resolve(__dirname, "src/database/migrations");
-const SEEDS_PATH = path.resolve(__dirname, "src/database/seeds");
-
-module.exports = {
+const environment = {
   testing: {
     debug: false,
     connection: {
@@ -51,7 +52,7 @@ module.exports = {
     },
     logger: {
       name: "Library Server",
-      level: "info",
+      level: "trace",
     },
   },
   production: {
@@ -78,3 +79,5 @@ module.exports = {
     },
   },
 };
+
+export default environment;

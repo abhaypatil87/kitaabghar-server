@@ -1,26 +1,64 @@
-const pg = require("pg");
-const path = require("path");
-const fs = require("fs").promises;
-const Logger = require("../utils/logger");
+import * as pg from "pg";
+import * as path from "path";
+import { promises as fs } from "fs";
+import bunyanLogger from "../utils/logger";
+import environment from "../../config";
 
-const environment = process.env.NODE_ENV || "development";
-const { connection, migrations, seeds } = require("../../config")[environment];
-
-const logger = Logger.child({ component: "database" });
+const env = process.env.NODE_ENV || "development";
+const connection = environment[env].connection;
+const migrations = environment[env].migrations;
+const seeds = environment[env].seeds;
+const logger = bunyanLogger.child({ component: "database" });
 
 const COMMIT = Symbol("COMMIT");
 const ROLLBACK = Symbol("ROLLBACK");
 
+interface QueryResult<ResultType = any> {
+  results: ResultType[];
+  fields: pg.FieldDef[];
+}
+
+class Connection {
+  constructor(private conn: pg.PoolClient | pg.Client) {}
+
+  async query<Result = any, Input = any>(
+    text: string | pg.QueryConfig,
+    values?: Input[]
+  ): Promise<QueryResult<Result>> {
+    let query: pg.QueryConfig<Input[]>;
+    if (typeof text === "string") {
+      query = { text, values };
+    } else {
+      query = text;
+    }
+    try {
+      const { rows: results, fields } = await this.conn.query<Result>(query);
+      return { results, fields };
+    } catch (err) {
+      logger.debug("Failed query: %s", query.text);
+      throw err;
+    }
+  }
+
+  async end() {
+    await (this.conn as pg.Client).end();
+  }
+
+  release() {
+    (this.conn as pg.PoolClient).release();
+  }
+}
+
 class Database {
-  pool;
-  poolPromise;
+  private pool;
+  private poolPromise;
 
   constructor() {
     this.pool = null;
     this.poolPromise = null;
   }
 
-  async connect() {
+  async connect(): Promise<Connection> {
     if (this.pool === null) {
       if (this.poolPromise === null) {
         this.poolPromise = this.connectAndInitialise();
@@ -36,19 +74,20 @@ class Database {
       }
     }
 
-    return await this.pool.connect();
+    const client = await this.pool.connect();
+    return new Connection(client);
   }
 
-  async query(text, values) {
+  async query(query: string, values?: Array<any>) {
     const conn = await this.connect();
     try {
-      return await conn.query(text, values);
+      return await conn.query(query, values);
     } finally {
       conn.release();
     }
   }
 
-  async runInTransaction(conn, callbackMethod) {
+  async runInTransaction(conn: Connection, callbackMethod) {
     let releaseConnection = false;
     if (conn === null) {
       conn = await this.connect();
@@ -81,13 +120,13 @@ class Database {
     }
   }
 
-  async connectAndInitialise() {
+  private async connectAndInitialise() {
+    const client = new pg.Client(connection);
+    await client.connect();
+    const conn = new Connection(client);
     try {
-      const conn = new pg.Client(connection);
-      await conn.connect();
-      //const conn = new Connection(client);
       await this.runInTransaction(conn, async () => {
-        const result = await conn.query(
+        const result = await client.query(
           `
             SELECT 1
             FROM information_schema.tables
@@ -107,12 +146,14 @@ class Database {
         }
 
         if (seeds.seed) {
-          await seedMigrations(conn);
+          await seedDatabase(conn);
         }
         return COMMIT;
       });
     } catch (e) {
       throw e;
+    } finally {
+      await conn.end();
     }
 
     this.pool = new pg.Pool(connection);
@@ -124,8 +165,8 @@ class Database {
  * @param {String} dir Absolute path to directory
  * @returns {String[]} List of file names, sorted naturally
  */
-const readFiles = async (dir) => {
-  const sqlFiles = [];
+async function readFiles(dir: string): Promise<string[]> {
+  const sqlFiles = [] as Array<string>;
   const files = await fs.readdir(dir);
 
   for (const file of files) {
@@ -142,11 +183,11 @@ const readFiles = async (dir) => {
   });
 
   return sqlFiles;
-};
+}
 
-const isSqlFile = (fileName) => {
+function isSqlFile(fileName: string) {
   return fileName.toLowerCase().indexOf(".sql") !== -1;
-};
+}
 
 /**
  * @description Executes SQL files in a given directory using the connection
@@ -155,9 +196,13 @@ const isSqlFile = (fileName) => {
  * @param options An Object holding the configuration, with below options
  * filter: An array of file names to omit
  */
-const executeMultiSqlFilesInDir = async (dir, conn, options) => {
-  let filesToFilter = [];
-  if (typeof arguments[2] === "object") {
+const executeMultiSqlFilesInDir = async (
+  dir,
+  conn: Connection,
+  options?: object
+) => {
+  let filesToFilter = [] as Array<string>;
+  if (typeof options === "object") {
     for (const property in options) {
       if (property === "filter") {
         filesToFilter = [...options["filter"]];
@@ -180,28 +225,29 @@ const executeMultiSqlFilesInDir = async (dir, conn, options) => {
   }
 };
 
-const seedMigrations = async (connection) => {
+const seedDatabase = async (conn: Connection) => {
   logger.info(`ACTIVITY: seedMigrations. START`);
   if (!seeds.seed) {
     logger.info(
-      `ACTIVITY: seedMigrations. SKIPPED. REASON: seeds flag is set to FALSE`
+      `ACTIVITY: seedDatabase. SKIPPED. REASON: seeds flag is set to FALSE`
     );
   } else {
-    await executeMultiSqlFilesInDir(seeds.directory, connection);
+    await executeMultiSqlFilesInDir(seeds.directory, conn);
   }
   logger.info(`ACTIVITY: seedMigrations. END`);
 };
 
-const migrateDatabase = async (conn) => {
+const migrateDatabase = async (conn: Connection) => {
+  logger.info(`ACTIVITY: migrateDatabase. START`);
   try {
-    const result = await conn.query(
+    const { results } = await conn.query(
       `SELECT script_name
        FROM database_version
        ORDER BY script_name
       `
     );
-    const fileNames = [];
-    for (const row of result.rows) {
+    const fileNames = [] as Array<string>;
+    for (const row of results) {
       const script = JSON.parse(JSON.stringify(row));
       fileNames.push(script.script_name);
     }
@@ -211,10 +257,12 @@ const migrateDatabase = async (conn) => {
     });
   } catch (error) {
     throw new Error(error.message);
+  } finally {
+    logger.info(`ACTIVITY: migrateDatabase. END`);
   }
 };
 
-const initialiseDatabase = async (conn, dbName) => {
+const initialiseDatabase = async (conn: Connection, dbName: string) => {
   logger.info(
     `ACTIVITY: initialiseDatabase. START. Initialising a new database ${dbName} with full schema`
   );
@@ -223,6 +271,4 @@ const initialiseDatabase = async (conn, dbName) => {
 };
 
 const database = new Database();
-module.exports = {
-  database: database,
-};
+export default database;

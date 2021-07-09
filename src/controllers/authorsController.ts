@@ -20,7 +20,7 @@ const verifyParameter = (ctx) => {
   }
 };
 
-const index = async (ctx) => {
+const getAuthors = async (ctx) => {
   const author = new Author();
   try {
     const result = await author.all();
@@ -37,7 +37,7 @@ const index = async (ctx) => {
   }
 };
 
-const show = async (ctx) => {
+const getAuthor = async (ctx) => {
   verifyParameter(ctx);
 
   const author = new Author();
@@ -56,7 +56,7 @@ const show = async (ctx) => {
   };
 };
 
-const create = async (ctx) => {
+const createAuthor = async (ctx) => {
   const request = ctx.request.body;
 
   const author = new Author(request);
@@ -82,7 +82,7 @@ const create = async (ctx) => {
   }
 };
 
-const update = async (ctx) => {
+const updateAuthor = async (ctx) => {
   verifyParameter(ctx);
 
   const request = ctx.request.body;
@@ -118,7 +118,7 @@ const update = async (ctx) => {
   }
 };
 
-const remove = async (ctx) => {
+const removeAuthor = async (ctx) => {
   verifyParameter(ctx);
 
   const author = new Author();
@@ -141,10 +141,12 @@ const remove = async (ctx) => {
   }
 };
 
-module.exports = {
-  index,
-  show,
-  create,
-  update,
-  remove,
+const authorController = {
+  removeAuthor,
+  updateAuthor,
+  createAuthor,
+  getAuthor,
+  getAuthors,
 };
+
+export default authorController;

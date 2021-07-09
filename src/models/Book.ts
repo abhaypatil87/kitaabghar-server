@@ -1,8 +1,9 @@
-const { database } = require("../database/index");
+import database from "../database";
+import { BookWithAuthorObject } from "../utils/declarations";
 
 const findById = async (id) => {
   try {
-    const result = await database.query(
+    const { results } = await database.query(
       `SELECT books.book_id,
               books.title,
               books.subtitle,
@@ -12,17 +13,18 @@ const findById = async (id) => {
               books.page_count,
               books.thumbnail_url,
               authors.first_name,
-              authors.last_name
+              authors.last_name,
+              authors.author_id
        FROM books
                 INNER JOIN authors ON authors.author_id = books.author_id
        WHERE books.book_id = $1
       `,
       [id]
     );
-    if (result.rowCount === 0) {
+    if (results.length === 0) {
       return;
     }
-    return JSON.parse(JSON.stringify(result.rows[0]));
+    return JSON.parse(JSON.stringify(results[0]));
   } catch (error) {
     throw error;
   }
@@ -39,7 +41,7 @@ class Book {
   author_id;
   thumbnail_url;
 
-  constructor(props) {
+  constructor(props?: BookWithAuthorObject) {
     if (!props) return;
 
     this.init(props);
@@ -49,6 +51,11 @@ class Book {
     try {
       const result = await findById(id);
       if (!result) return {};
+      result.author = {
+        author_id: result.author_id,
+        first_name: result.first_name,
+        last_name: result.last_name,
+      };
       this.init(result);
     } catch (error) {
       throw error;
@@ -57,7 +64,7 @@ class Book {
 
   async all() {
     try {
-      const result = await database.query(
+      const { results } = await database.query(
         `SELECT books.book_id,
                 books.title,
                 books.subtitle,
@@ -71,7 +78,7 @@ class Book {
                   INNER JOIN authors ON authors.author_id = books.author_id
          ORDER BY books.title`
       );
-      return JSON.parse(JSON.stringify(result.rows));
+      return JSON.parse(JSON.stringify(results));
     } catch (error) {
       throw error;
     }
@@ -151,7 +158,7 @@ class Book {
     }
   }
 
-  init(props) {
+  init(props: BookWithAuthorObject) {
     this.book_id = props.book_id;
     this.title = props.title;
     this.subtitle = props.subtitle;
@@ -159,12 +166,9 @@ class Book {
     this.isbn_13 = props.isbn_13;
     this.description = props.description;
     this.page_count = props.page_count;
-    this.author_id = props.author_id;
+    this.author_id = props.author.author_id;
     this.thumbnail_url = props.thumbnail_url;
   }
 }
 
-module.exports = {
-  findById,
-  Book,
-};
+export { Book };
