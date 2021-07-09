@@ -15,6 +15,7 @@ import {
   getBookDataFromResponse,
   getBooksFromResponse,
 } from "../utils";
+import { ThirdPartyApi } from "../models/ThirdPartyApi";
 
 const bookSchema = Joi.object({
   book_id: Joi.number().integer(),
@@ -135,27 +136,34 @@ const create = async (ctx) => {
   if (request.hasOwnProperty("isbn")) {
     let olBooksResp;
     let gBooksResp;
-    try {
-      gBooksResp = await fetchGoogleBooksApiResponse({ isbn: request.isbn });
-    } catch (e) {
-      ctx.response.status = 500;
-      ctx.throw(
-        "Error occurred while fetching data from GoogleBooks API. Please try to disable fetching data from GoogleBooks and try again."
-      );
+    let thirdPartyApi = new ThirdPartyApi(null);
+    const result = await thirdPartyApi.all();
+
+    if (result["google_books"]) {
+      try {
+        gBooksResp = await fetchGoogleBooksApiResponse({ isbn: request.isbn });
+      } catch (e) {
+        ctx.response.status = 500;
+        ctx.throw(
+          "Error occurred while fetching data from GoogleBooks API. Please try to disable fetching data from GoogleBooks and try again."
+        );
+      }
     }
 
-    try {
-      olBooksResp = await fetchOpenLibraryApiResponse(request.isbn);
-    } catch (e) {
-      ctx.response.status = 500;
-      ctx.throw(
-        "Error occurred while fetching data from OpenLibrary API. Please try to disable fetching data from OpenLibrary and try again."
-      );
+    if (result["open_library"]) {
+      try {
+        olBooksResp = await fetchOpenLibraryApiResponse(request.isbn);
+      } catch (e) {
+        ctx.response.status = 500;
+        ctx.throw(
+          "Error occurred while fetching data from OpenLibrary API. Please try to disable fetching data from OpenLibrary and try again."
+        );
+      }
     }
 
     const response = {} as BookResponse;
 
-    if (gBooksResp.totalItems > 0) {
+    if (gBooksResp && gBooksResp.totalItems > 0) {
       response.google = gBooksResp;
     }
     if (olBooksResp) {

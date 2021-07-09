@@ -50,7 +50,7 @@ const getOrCreateAuthor = async (bookAuthor: AuthorNameObject) => {
     if (author === undefined) {
       author = new Author(bookAuthor);
       const result = await author.store();
-      author.author_id = result.rows[0]["author_id"];
+      author.author_id = result["author_id"];
     }
   } catch (error) {
     throw error;
@@ -97,12 +97,13 @@ class Author {
   async store() {
     try {
       await database.query("START TRANSACTION");
-      return await database.query(
+      const { results } = await database.query(
         `INSERT INTO authors(first_name, last_name)
          VALUES ($1, $2)
          RETURNING author_id`,
         [this.first_name, this.last_name]
       );
+      return results[0];
     } catch (error) {
       throw error;
     } finally {
