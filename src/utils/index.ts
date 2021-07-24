@@ -1,10 +1,18 @@
+import { v4 as uuidv4 } from "uuid";
 import {
   BookResponse,
   BookWithAuthorName,
   BookWithAuthorObject,
 } from "./declarations";
 
+const uuidParse = require("uuid").parse;
 const request = require("node-fetch");
+
+const getIntFromUUID = (uuid) => {
+  const parsedUuid = uuidParse(uuid);
+  const buffer = Buffer.from(parsedUuid);
+  return buffer.readUInt32BE(0);
+};
 
 export const fetchGoogleBooksApiResponse = async (searchParams) => {
   const url = new URL("books/v1/volumes", "https://www.googleapis.com");
@@ -82,6 +90,9 @@ export const getBooksFromResponse: (response) => BookWithAuthorName[] = (
   return response.map((item) => {
     const book = {} as BookWithAuthorName;
     const volumeInfo = item.volumeInfo;
+    // assign an ID for uniqueness
+    book.book_id = getIntFromUUID(uuidv4());
+
     // Assign basic information
     book.title = getConvertedBookTitle(volumeInfo["title"]);
     book.subtitle = volumeInfo.subtitle || "";
