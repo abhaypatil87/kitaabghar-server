@@ -17,6 +17,10 @@
   "bugs": {
     "url": "https://github.com/abhaypatil87/library_server/issues"
   },
+  "engines": {
+    "node": "12.20.1",
+    "npm": "7.19.0"
+  },
   "author": "Abhay Patil, <abhaypatil87@gmail.com>",
   "license": "ISC",
   "dependencies": {
@@ -31,9 +35,12 @@
     "@types/node": "^15.12.4",
     "@types/node-fetch": "^2.5.10",
     "@types/pg": "^8.6.0",
+    "@types/uuid": "^8.3.1",
+    "bcryptjs": "^2.4.3",
     "bunyan": "^1.8.15",
     "dotenv": "^10.0.0",
     "joi": "^17.4.0",
+    "jsonwebtoken": "^8.5.1",
     "koa": "^2.13.1",
     "koa-bodyparser": "^4.3.0",
     "koa-json-error": "^3.1.2",
@@ -41,7 +48,8 @@
     "node-fetch": "^2.6.1",
     "nodemon": "^2.0.7",
     "pg": "^8.6.0",
-    "typescript": "^4.3.4"
+    "typescript": "^4.3.4",
+    "uuid": "^8.3.2"
   },
   "devDependencies": {
     "prettier": "2.3.0"

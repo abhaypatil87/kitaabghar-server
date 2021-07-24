@@ -1,3 +1,13 @@
+interface User {
+  first_name: string;
+  last_name: string;
+  email: string;
+  password?: string;
+  image_url?: string;
+  external_id?: number | null;
+  user_id?: string;
+}
+
 interface AuthorNameObject {
   first_name: string;
   last_name: string;
@@ -64,4 +74,5 @@ export {
   GoogleBooksFormat,
   OpenLibFormat,
   VolumeInfo,
+  User,
 };
