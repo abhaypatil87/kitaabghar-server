@@ -8,7 +8,7 @@ import { router } from "./router";
 import { ERROR } from "./src/utils/enums";
 import bunyanLogger from "./src/utils/logger";
 
-const port = process.env.APP_PORT || 4000;
+const port = process.env.PORT || 4000;
 const app = new Koa();
 const logger = bunyanLogger.child({ component: "index" });
 
