@@ -123,8 +123,14 @@ class Database {
   private async connectAndInitialise() {
     const isProduction = env === "production";
     const connectionString = `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_DATABASE}`;
+    const connectionConfig = {
+      connectionString: isProduction
+        ? process.env.DATABASE_URL
+        : connectionString,
+      ssl: isProduction,
+    };
 
-    const client = new pg.Client(connection);
+    const client = new pg.Client(connectionConfig);
     await client.connect();
     const conn = new Connection(client);
     try {
@@ -159,12 +165,7 @@ class Database {
       await conn.end();
     }
 
-    this.pool = new pg.Pool({
-      connectionString: isProduction
-        ? process.env.DATABASE_URL
-        : connectionString,
-      ssl: isProduction,
-    });
+    this.pool = new pg.Pool(connectionConfig);
   }
 }
 
