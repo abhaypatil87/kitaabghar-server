@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users
     email           varchar(200) NOT NULL,
     external_id     int DEFAULT NULL,
     password        varchar(1024),
-    image_url       varchar(1024) DEFAULT NULL;
+    image_url       varchar(1024) DEFAULT NULL,
     last_modified   TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     created         TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (external_id) REFERENCES externals
