@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS login_history
 );;
 
 INSERT INTO externals(external_type)
-values ('GOOGLE');
+values ('GOOGLE');;
 
 INSERT INTO database_version(script_name)
 values ('1_4.sql');;
