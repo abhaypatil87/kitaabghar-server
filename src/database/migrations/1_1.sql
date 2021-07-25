@@ -38,12 +38,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;;
 
+DROP TRIGGER IF EXISTS authors_last_modified_trig
+  ON authors;;
 CREATE TRIGGER authors_last_modified_trig
     BEFORE UPDATE
     ON authors
     FOR EACH ROW
 EXECUTE PROCEDURE trigger_set_timestamp();;
 
+
+DROP TRIGGER IF EXISTS books_last_modified_trig
+  ON books;;
 CREATE TRIGGER books_last_modified_trig
     BEFORE UPDATE
     ON books

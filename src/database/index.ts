@@ -127,7 +127,7 @@ class Database {
       connectionString: isProduction
         ? process.env.DATABASE_URL
         : connectionString,
-      ssl: isProduction,
+      ssl: isProduction ? { rejectUnauthorized: false } : false,
     };
 
     const client = new pg.Client(connectionConfig);
