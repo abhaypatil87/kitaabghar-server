@@ -1,6 +1,5 @@
 require("dotenv").config();
 import * as Koa from "koa";
-import jwt from "jsonwebtoken";
 import * as cors from "@koa/cors";
 import { userAgent } from "koa-useragent";
 
