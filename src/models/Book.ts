@@ -40,6 +40,7 @@ class Book {
   page_count;
   author_id;
   thumbnail_url;
+  library_id;
 
   constructor(props?: BookWithAuthorObject) {
     if (!props) return;
@@ -84,12 +85,45 @@ class Book {
     }
   }
 
+  async getBooksFromLibrary(libraryId: number) {
+    try {
+      const { results } = await database.query(
+        `SELECT books.book_id,
+                books.title,
+                books.subtitle,
+                books.description,
+                books.isbn_10,
+                books.isbn_13,
+                books.page_count,
+                books.thumbnail_url,
+                books.library_id,
+                CONCAT(authors.first_name, ' ', authors.last_name) as author
+         FROM books
+                  INNER JOIN authors ON authors.author_id = books.author_id
+         WHERE library_id = $1
+         ORDER BY books.title`,
+        [libraryId]
+      );
+      return JSON.parse(JSON.stringify(results));
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async store() {
     try {
       await database.query("START TRANSACTION");
       return await database.query(
-        `INSERT INTO books(title, subtitle, description, page_count, isbn_10, isbn_13, author_id, thumbnail_url)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `INSERT INTO books(title, 
+                subtitle, 
+                description, 
+                page_count, 
+                isbn_10, 
+                isbn_13, 
+                author_id, 
+                thumbnail_url, 
+                library_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING book_id`,
         [
           this.title,
@@ -100,6 +134,7 @@ class Book {
           this.isbn_13,
           this.author_id,
           this.thumbnail_url,
+          this.library_id,
         ]
       );
     } catch (error) {
@@ -168,6 +203,7 @@ class Book {
     this.page_count = props.page_count;
     this.author_id = props.author.author_id;
     this.thumbnail_url = props.thumbnail_url;
+    this.library_id = props.library_id;
   }
 }
 
