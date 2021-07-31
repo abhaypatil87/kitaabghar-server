@@ -16,6 +16,8 @@ import {
   getBooksFromResponse,
 } from "../utils";
 import { ThirdPartyApi } from "../models/ThirdPartyApi";
+import authController from "./authController";
+import database from "../database";
 
 const bookSchema = Joi.object({
   book_id: Joi.number().integer(),
@@ -27,6 +29,7 @@ const bookSchema = Joi.object({
   page_count: Joi.number().allow("", null),
   author_id: Joi.number().required(),
   thumbnail_url: Joi.string().allow("", null),
+  library_id: Joi.number().required(),
 });
 
 const isEmpty = (object) => {
@@ -38,6 +41,24 @@ const verifyParameter = (ctx) => {
   if (!params.id) {
     ctx.response.status = 400;
     ctx.throw("Book ID is required");
+  }
+};
+
+const getUserLibraries = async (
+  userId: number
+): Promise<Array<{ library_id: number }>> => {
+  try {
+    await database.query("START TRANSACTION");
+    let { results } = await database.query(
+      `
+          SELECT library_id FROM user_libraries
+          WHERE user_id = $1`,
+      [userId]
+    );
+
+    return results;
+  } catch (error) {
+    throw error;
   }
 };
 
@@ -70,19 +91,24 @@ const index = async (ctx) => {
     }
   } else {
     const book = new Book();
-    try {
-      const result = await book.all();
-      ctx.body = {
-        status: SUCCESS,
-        message: "",
-        data: {
-          books: result,
-        },
-      };
-    } catch (error) {
-      ctx.response.status = 400;
-      ctx.throw(error.message);
+    const loggedInUser = authController.getMyJwt(ctx);
+    /* Get the library for this user. Even though there's always a single library for each user at the moment,
+         the correct way to fetch books is by libraries */
+    const libraries = await getUserLibraries(loggedInUser.id);
+    if (libraries.length === 0) {
+      throw new Error(
+        "No library found. You may add books which will automatically create a library."
+      );
     }
+
+    const result = await book.getBooksFromLibrary(libraries[0]["library_id"]);
+    ctx.body = {
+      status: SUCCESS,
+      message: "",
+      data: {
+        books: result,
+      },
+    };
   }
 };
 
@@ -131,9 +157,13 @@ async function createBook(bookData: BookWithAuthorObject, ctx) {
 }
 
 const create = async (ctx) => {
-  const request = ctx.request.body;
+  const requestBody = ctx.request.body;
+  const loggedInUser = authController.getMyJwt(ctx);
+  const libraries = await getUserLibraries(loggedInUser.id);
+  const libraryId = libraries[0]["library_id"];
+
   /* create a book by third party lookup */
-  if (request.hasOwnProperty("isbn")) {
+  if (requestBody.hasOwnProperty("isbn")) {
     let olBooksResp;
     let gBooksResp;
     let thirdPartyApi = new ThirdPartyApi(null);
@@ -141,7 +171,9 @@ const create = async (ctx) => {
 
     if (result["google_books"]) {
       try {
-        gBooksResp = await fetchGoogleBooksApiResponse({ isbn: request.isbn });
+        gBooksResp = await fetchGoogleBooksApiResponse({
+          isbn: requestBody.isbn,
+        });
       } catch (e) {
         ctx.response.status = 500;
         ctx.throw(
@@ -152,7 +184,7 @@ const create = async (ctx) => {
 
     if (result["open_library"]) {
       try {
-        olBooksResp = await fetchOpenLibraryApiResponse(request.isbn);
+        olBooksResp = await fetchOpenLibraryApiResponse(requestBody.isbn);
       } catch (e) {
         ctx.response.status = 500;
         ctx.throw(
@@ -173,23 +205,25 @@ const create = async (ctx) => {
     const bookData = await getBookDataFromResponse(response);
     const authorResult = await getOrCreateAuthor(bookData.author);
     bookData.author.author_id = authorResult.author_id;
+    bookData.library_id = libraryId;
     await createBook(bookData, ctx);
   } else if (
-    request.hasOwnProperty("isbn_10") ||
-    request.hasOwnProperty("isbn_13")
+    requestBody.hasOwnProperty("isbn_10") ||
+    requestBody.hasOwnProperty("isbn_13")
   ) {
-    /* Or, create with a manual entry */
-    const bookObject: BookWithAuthorObject = { ...request };
-    const names = request.author.split(" ");
+    /* Or, create with a manual entry/keyword search method */
+    const bookData: BookWithAuthorObject = { ...requestBody };
+    const names = requestBody.author.split(" ");
 
-    // re-initialise author with the correct type as author is a string coming in from the request
-    bookObject.author = {} as AuthorNameObject;
-    bookObject.author.first_name = names[0];
-    bookObject.author.last_name = names[1];
+    // re-initialise author with the correct type as author is a string coming in from the requestBody
+    bookData.author = {} as AuthorNameObject;
+    bookData.author.first_name = names[0];
+    bookData.author.last_name = names[1];
 
-    const authorResult = await getOrCreateAuthor(bookObject.author);
-    bookObject.author.author_id = authorResult.author_id;
-    await createBook(bookObject, ctx);
+    const authorResult = await getOrCreateAuthor(bookData.author);
+    bookData.author.author_id = authorResult.author_id;
+    bookData.library_id = libraryId;
+    await createBook(bookData, ctx);
   } else {
     ctx.response.status = 400;
     ctx.throw("A 13 or 10 digit ISBN is required to create a book");

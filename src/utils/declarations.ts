@@ -5,7 +5,7 @@ interface User {
   password?: string;
   image_url?: string;
   external_id?: number | null;
-  user_id?: string;
+  user_id: number;
 }
 
 interface AuthorNameObject {
@@ -23,6 +23,7 @@ interface Book {
   thumbnail_url: string;
   isbn_10: string;
   isbn_13: string;
+  library_id?: number;
 }
 
 interface BookWithAuthorName extends Book {

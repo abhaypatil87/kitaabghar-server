@@ -4,6 +4,7 @@ import * as jwt from "jsonwebtoken";
 import database from "../database";
 import { SUCCESS } from "../utils/enums";
 import { User } from "../utils/declarations";
+import librariesController from "./librariesController";
 
 const userSchema = Joi.object({
   user_id: Joi.number().integer(),
@@ -14,10 +15,14 @@ const userSchema = Joi.object({
   external_id: Joi.any(),
 });
 
+function getMyJwt(ctx) {
+  return ctx.request.jwt;
+}
+
 /*
  * Creates a user account
  */
-async function createUserAccount(user: User) {
+async function createUserAccount(user: User): Promise<User | undefined> {
   try {
     let hashedPassword = null;
     if (user.password !== "") {
@@ -53,7 +58,7 @@ async function createUserAccount(user: User) {
  * Finds a user with a given email address
  * If no user found, null is returned
  */
-async function findByEmailAddress(email: string): Promise<User> {
+async function findByEmailAddress(email: string): Promise<User | undefined> {
   try {
     let { results } = await database.query(
       `
@@ -62,7 +67,7 @@ async function findByEmailAddress(email: string): Promise<User> {
           WHERE LOWER(email) = '${email}'
           LIMIT 1`
     );
-    return results.length > 0 ? results[0] : null;
+    return results.length > 0 ? results[0] : undefined;
   } catch (error) {
     throw error;
   }
@@ -83,7 +88,7 @@ const signIn = async (ctx) => {
     request;
   try {
     let existingUser = await findByEmailAddress(email);
-    if (existingUser !== null) {
+    if (existingUser !== undefined) {
       if (existingUser.external_id !== null) {
         if (password && password.length > 0) {
           ctx.response.status = 400;
@@ -113,9 +118,10 @@ const signIn = async (ctx) => {
     /* If a user is signing in for the very first with external login details, (Google etc.)
      * we must create an internal account first and let the user sign-in
      */
-    if (!existingUser) {
+    if (existingUser === undefined) {
       if (external) {
         existingUser = await createUserAccount({
+          user_id: -1,
           first_name: first_name || "",
           last_name: last_name || "",
           email: email,
@@ -123,28 +129,34 @@ const signIn = async (ctx) => {
           image_url: image_url || "",
           external_id: getExternalId(external),
         });
+        /* Create a default library for the user */
+        if (existingUser !== undefined) {
+          await librariesController.createUserLibrary(existingUser.user_id);
+        }
       } else {
         ctx.response.status = 404;
         ctx.throw(`No user found with the email ID '${email}'`);
       }
     }
 
-    const token = jwt.sign(
-      {
-        email: existingUser.email,
-        id: existingUser.user_id,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_ACCESS_TOKEN_EXP }
-    );
+    if (existingUser) {
+      const token = jwt.sign(
+        {
+          email: existingUser.email,
+          id: existingUser.user_id,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_ACCESS_TOKEN_EXP }
+      );
 
-    ctx.body = {
-      status: SUCCESS,
-      message: `Login successful`,
-      data: {
-        user: { ...existingUser, token },
-      },
-    };
+      ctx.body = {
+        status: SUCCESS,
+        message: `Login successful`,
+        data: {
+          user: { ...existingUser, token },
+        },
+      };
+    }
   } catch (error) {
     ctx.response.status = 500;
     ctx.throw(
@@ -158,7 +170,7 @@ const signUp = async (ctx) => {
 
   try {
     const existingUser = await findByEmailAddress(request.email);
-    if (existingUser !== null) {
+    if (existingUser) {
       ctx.response.status = 400;
       ctx.throw(
         `There exists a user with the specified email ID '${request.email}'`
@@ -172,21 +184,25 @@ const signUp = async (ctx) => {
     }
 
     const newUser = await createUserAccount(request);
-    const token = jwt.sign(
-      {
-        email: request.email,
-        id: newUser,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_ACCESS_TOKEN_EXP }
-    );
-    ctx.body = {
-      status: SUCCESS,
-      message: `Sign Up successful`,
-      data: {
-        user: { ...newUser, token },
-      },
-    };
+    if (newUser) {
+      /* Create a default library for the user */
+      await librariesController.createUserLibrary(newUser.user_id);
+      const token = jwt.sign(
+        {
+          email: request.email,
+          id: newUser.user_id,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_ACCESS_TOKEN_EXP }
+      );
+      ctx.body = {
+        status: SUCCESS,
+        message: `Sign Up successful`,
+        data: {
+          user: { ...newUser, token },
+        },
+      };
+    }
   } catch (error) {
     ctx.response.status = 500;
     ctx.throw(
@@ -199,6 +215,7 @@ const authController = {
   signIn,
   signOut,
   signUp,
+  getMyJwt,
 };
 
 export default authController;
