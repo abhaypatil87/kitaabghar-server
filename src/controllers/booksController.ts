@@ -8,7 +8,7 @@ import {
 import * as Joi from "joi";
 import { SUCCESS } from "../utils/enums";
 import { getOrCreateAuthor } from "../models/Author";
-import { Book } from "../models/Book";
+import { Book, findByIsbn, findByTitle } from "../models/Book";
 import {
   fetchGoogleBooksApiResponse,
   fetchOpenLibraryApiResponse,
@@ -141,6 +141,29 @@ async function createBook(bookData: BookWithAuthorObject, ctx) {
   }
 
   try {
+    /* Verify that this book does not exist already in the library */
+    const existsIsbn10 = await findByIsbn(book.isbn_10);
+    if (!isEmpty(existsIsbn10)) {
+      ctx.response.status = 400;
+      ctx.throw(
+        `A book with the ISBN '${existsIsbn10.isbn_10}' already exists`
+      );
+    }
+
+    const existsIsbn13 = await findByIsbn(book.isbn_13);
+    if (!isEmpty(existsIsbn13)) {
+      ctx.response.status = 400;
+      ctx.throw(
+        `A book with the ISBN '${existsIsbn13.isbn_13}' already exists`
+      );
+    }
+
+    const existsTitle = await findByTitle(book.title);
+    if (!isEmpty(existsTitle)) {
+      ctx.response.status = 400;
+      ctx.throw(`A book with the title '${existsTitle.title}' already exists`);
+    }
+
     const { results } = await book.store();
     book.book_id = results[0]["book_id"];
     ctx.body = {

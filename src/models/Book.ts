@@ -30,6 +30,49 @@ const findById = async (id) => {
   }
 };
 
+const findByIsbn = async (isbn: string) => {
+  try {
+    const { results } = await database.query(
+      `SELECT books.book_id,
+              books.title,
+              books.subtitle,
+              books.description,
+              books.isbn_10,
+              books.isbn_13,
+              books.page_count,
+              books.thumbnail_url
+       FROM books
+       WHERE books.isbn_10 = $1 OR books.isbn_13 = $1
+      `,
+      [isbn]
+    );
+    return results.length === 0 ? {} : JSON.parse(JSON.stringify(results[0]));
+  } catch (error) {
+    throw error;
+  }
+};
+
+const findByTitle = async (title: string) => {
+  try {
+    const { results } = await database.query(
+      `SELECT books.book_id,
+              books.title,
+              books.subtitle,
+              books.description,
+              books.isbn_10,
+              books.isbn_13,
+              books.page_count,
+              books.thumbnail_url
+       FROM books
+       WHERE books.title LIKE '%${title}%'
+      `
+    );
+    return results.length === 0 ? {} : JSON.parse(JSON.stringify(results[0]));
+  } catch (error) {
+    throw error;
+  }
+};
+
 class Book {
   book_id;
   title;
@@ -207,4 +250,4 @@ class Book {
   }
 }
 
-export { Book };
+export { findByIsbn, findByTitle, Book };
