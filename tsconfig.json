@@ -9,7 +9,8 @@
     "checkJs": true,
     "newLine": "lf",
     "lib": [
-      "ESNext.String"
+      "ESNext.String",
+      "dom"
     ]
   },
   "include": [
