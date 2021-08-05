@@ -1,5 +1,6 @@
 import database from "../database";
 import { BookWithAuthorObject } from "../utils/declarations";
+import escapeString from "../utils/stringUtils";
 
 const findById = async (id) => {
   try {
@@ -238,11 +239,11 @@ class Book {
 
   init(props: BookWithAuthorObject) {
     this.book_id = props.book_id;
-    this.title = props.title;
-    this.subtitle = props.subtitle;
+    this.title = escapeString(props.title);
+    this.subtitle = escapeString(props.subtitle);
     this.isbn_10 = props.isbn_10;
     this.isbn_13 = props.isbn_13;
-    this.description = props.description;
+    this.description = escapeString(props.description);
     this.page_count = props.page_count;
     this.author_id = props.author.author_id;
     this.thumbnail_url = props.thumbnail_url;
