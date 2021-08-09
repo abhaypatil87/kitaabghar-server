@@ -54,6 +54,52 @@ async function createUserAccount(user: User): Promise<User | undefined> {
   }
 }
 
+async function deleteUserLibraryBooks(userId: number) {
+  try {
+    await database.query(
+      `DELETE FROM books 
+             WHERE library_id = (
+                SELECT library_id 
+                FROM user_libraries
+                WHERE user_id = $1
+             )`,
+      [userId]
+    );
+    await database.query("COMMIT");
+    return true;
+  } catch (error) {}
+}
+
+async function deleteUserLibrary(userId: number) {
+  try {
+    await database.query(
+      `DELETE FROM user_libraries
+             WHERE user_id = $1`,
+      [userId]
+    );
+    await database.query("COMMIT");
+    return true;
+  } catch (error) {
+    await database.query("ROLLBACK");
+    throw error;
+  }
+}
+
+async function deleteUserAccount(userId: number) {
+  try {
+    await database.query(
+      `DELETE FROM users
+             WHERE user_id = $1`,
+      [userId]
+    );
+    await database.query("COMMIT");
+    return true;
+  } catch (error) {
+    await database.query("ROLLBACK");
+    throw error;
+  }
+}
+
 /*
  * Finds a user with a given email address
  * If no user found, null is returned
@@ -211,11 +257,34 @@ const signUp = async (ctx) => {
   }
 };
 
+const deleteAccount = async (ctx) => {
+  const loggedInUser = getMyJwt(ctx);
+  try {
+    await deleteUserLibraryBooks(loggedInUser.id);
+    await deleteUserLibrary(loggedInUser.id);
+    await deleteUserAccount(loggedInUser.id);
+    ctx.body = {
+      status: SUCCESS,
+      message: "",
+      data: {
+        me: true,
+      },
+    };
+  } catch (error) {
+    ctx.response.status = 500;
+    ctx.throw(
+      error.message ||
+        "Error occurred while deleting the user account. Please try again later!"
+    );
+  }
+};
+
 const authController = {
   signIn,
   signOut,
   signUp,
   getMyJwt,
+  deleteAccount,
 };
 
 export default authController;
