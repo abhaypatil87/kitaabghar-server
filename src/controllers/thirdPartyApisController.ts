@@ -1,4 +1,5 @@
-const { SUCCESS } = require("../utils/enums");
+import { Status } from "../utils/declarations";
+
 const { ThirdPartyApi } = require("../models/ThirdPartyApi");
 
 const getThirdPartyApis = async (ctx) => {
@@ -6,7 +7,7 @@ const getThirdPartyApis = async (ctx) => {
   try {
     const result = await thirdPartyApi.all();
     ctx.body = {
-      status: SUCCESS,
+      status: Status.SUCCESS,
       message: "",
       data: {
         thirdPartyApis: result,
@@ -30,7 +31,7 @@ const updateThirdPartyApis = async (ctx) => {
     const result = await thirdPartyApi.all();
 
     ctx.body = {
-      status: SUCCESS,
+      status: Status.SUCCESS,
       message: "API Settings updated",
       data: {
         thirdPartyApis: result,

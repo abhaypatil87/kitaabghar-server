@@ -23,7 +23,7 @@ interface Book {
   thumbnail_url: string;
   isbn_10: string;
   isbn_13: string;
-  library_id?: number;
+  library_id: number;
 }
 
 interface BookWithAuthorName extends Book {
@@ -64,6 +64,11 @@ interface OpenLibFormat {
 interface BookResponse {
   google: GoogleBooksFormat;
   openLibrary: OpenLibFormat;
+}
+
+export enum Status {
+  ERROR = "error",
+  SUCCESS = "success",
 }
 
 export {

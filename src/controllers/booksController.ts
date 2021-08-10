@@ -3,12 +3,12 @@ import {
   BookResponse,
   BookWithAuthorName,
   BookWithAuthorObject,
+  Status,
 } from "../utils/declarations";
 
 import * as Joi from "joi";
-import { SUCCESS } from "../utils/enums";
 import { getOrCreateAuthor } from "../models/Author";
-import { Book, findByIsbn, findByTitle } from "../models/Book";
+import { Book } from "../models/Book";
 import {
   fetchGoogleBooksApiResponse,
   fetchOpenLibraryApiResponse,
@@ -17,7 +17,8 @@ import {
 } from "../utils";
 import { ThirdPartyApi } from "../models/ThirdPartyApi";
 import authController from "./authController";
-import database from "../database";
+import { isEmpty } from "../utils/objectUtils";
+import librariesController from "./librariesController";
 
 const bookSchema = Joi.object({
   book_id: Joi.number().integer(),
@@ -32,33 +33,11 @@ const bookSchema = Joi.object({
   library_id: Joi.number().required(),
 });
 
-const isEmpty = (object) => {
-  return Object.keys(object).length === 0 || JSON.stringify(object) === "{}";
-};
-
 const verifyParameter = (ctx) => {
   const { params } = ctx;
   if (!params.id) {
     ctx.response.status = 400;
     ctx.throw("Book ID is required");
-  }
-};
-
-const getUserLibraries = async (
-  userId: number
-): Promise<Array<{ library_id: number }>> => {
-  try {
-    await database.query("START TRANSACTION");
-    let { results } = await database.query(
-      `
-          SELECT library_id FROM user_libraries
-          WHERE user_id = $1`,
-      [userId]
-    );
-
-    return results;
-  } catch (error) {
-    throw error;
   }
 };
 
@@ -78,7 +57,7 @@ const index = async (ctx) => {
 
         const bookData: BookWithAuthorName[] = getBooksFromResponse(response);
         ctx.body = {
-          status: SUCCESS,
+          status: Status.SUCCESS,
           message: `Found ${bookData.length} matching results`,
           data: {
             books: bookData,
@@ -93,17 +72,14 @@ const index = async (ctx) => {
     const book = new Book();
     const loggedInUser = authController.getMyJwt(ctx);
     /* Get the library for this user. Even though there's always a single library for each user at the moment,
-         the correct way to fetch books is by libraries */
-    const libraries = await getUserLibraries(loggedInUser.id);
-    if (libraries.length === 0) {
-      throw new Error(
-        "No library found. You may add books which will automatically create a library."
-      );
-    }
+         the correct way to fetch books is by userLibrary */
+    const userLibrary = await librariesController.getUserLibraries(
+      loggedInUser.id
+    );
 
-    const result = await book.getBooksFromLibrary(libraries[0]["library_id"]);
+    const result = await book.getBooksFromLibrary(userLibrary["library_id"]);
     ctx.body = {
-      status: SUCCESS,
+      status: Status.SUCCESS,
       message: "",
       data: {
         books: result,
@@ -116,7 +92,7 @@ const show = async (ctx) => {
   verifyParameter(ctx);
 
   const book = new Book();
-  await book.find(ctx.params.id);
+  await book.findById(ctx.params.id);
 
   if (isEmpty(book)) {
     ctx.response.status = 400;
@@ -124,7 +100,7 @@ const show = async (ctx) => {
   }
 
   ctx.body = {
-    status: SUCCESS,
+    status: Status.SUCCESS,
     message: "",
     data: {
       book,
@@ -134,6 +110,7 @@ const show = async (ctx) => {
 
 async function createBook(bookData: BookWithAuthorObject, ctx) {
   const book = new Book(bookData);
+  console.log(book);
   const validator = bookSchema.validate(book);
   if (validator.error) {
     ctx.response.status = 400;
@@ -141,33 +118,25 @@ async function createBook(bookData: BookWithAuthorObject, ctx) {
   }
 
   try {
-    /* Verify that this book does not exist already in the library */
-    const existsIsbn10 = await findByIsbn(book.isbn_10);
-    if (!isEmpty(existsIsbn10)) {
+    /* Verify that this book does not already exist in the library */
+    const existingBookWithIsbn = await book.findByIsbn();
+    if (existingBookWithIsbn !== undefined) {
       ctx.response.status = 400;
       ctx.throw(
-        `A book with the ISBN '${existsIsbn10.isbn_10}' already exists`
+        `A book with the ISBN ${book.isbn_10} / ${book.isbn_13} already exists`
       );
     }
 
-    const existsIsbn13 = await findByIsbn(book.isbn_13);
-    if (!isEmpty(existsIsbn13)) {
+    const existingBookWithTitle = await book.findByTitle();
+    if (existingBookWithTitle !== undefined) {
       ctx.response.status = 400;
-      ctx.throw(
-        `A book with the ISBN '${existsIsbn13.isbn_13}' already exists`
-      );
-    }
-
-    const existsTitle = await findByTitle(book.title);
-    if (!isEmpty(existsTitle)) {
-      ctx.response.status = 400;
-      ctx.throw(`A book with the title '${existsTitle.title}' already exists`);
+      ctx.throw(`A book with the title '${book.title}' already exists`);
     }
 
     const { results } = await book.store();
     book.book_id = results[0]["book_id"];
     ctx.body = {
-      status: SUCCESS,
+      status: Status.SUCCESS,
       message: `The book '${book.title}' has been added into the library`,
       data: {
         book,
@@ -182,9 +151,11 @@ async function createBook(bookData: BookWithAuthorObject, ctx) {
 const create = async (ctx) => {
   const requestBody = ctx.request.body;
   const loggedInUser = authController.getMyJwt(ctx);
-  const libraries = await getUserLibraries(loggedInUser.id);
-  const libraryId = libraries[0]["library_id"];
-
+  const userLibrary = await librariesController.getUserLibraries(
+    loggedInUser.id
+  );
+  const libraryId = userLibrary["library_id"];
+  console.log(`Library ID: ${libraryId}`);
   /* create a book by third party lookup */
   if (requestBody.hasOwnProperty("isbn")) {
     let olBooksResp;
@@ -238,7 +209,7 @@ const create = async (ctx) => {
     const bookData: BookWithAuthorObject = { ...requestBody };
     const names = requestBody.author.split(" ");
 
-    // re-initialise author with the correct type as author is a string coming in from the requestBody
+    /* re-initialise author with the correct type as author is a string coming in from the requestBody */
     bookData.author = {} as AuthorNameObject;
     bookData.author.first_name = names[0];
     bookData.author.last_name = names[1];
@@ -260,8 +231,8 @@ const update = async (ctx) => {
   const request = ctx.request.body;
 
   const book = new Book();
-  await book.find(params.id);
-  if (isEmpty(book)) {
+  await book.findById(params.id);
+  if (!book) {
     ctx.throw(`Book with ID ${params.id} not found`);
   }
 
@@ -279,7 +250,7 @@ const update = async (ctx) => {
     if (results.length > 0) {
       const updatedBook = JSON.parse(JSON.stringify(results[0]));
       ctx.body = {
-        status: SUCCESS,
+        status: Status.SUCCESS,
         message: `The book '${updatedBook.title}' has been updated`,
         data: {
           book: updatedBook,
@@ -302,7 +273,7 @@ const remove = async (ctx) => {
 
   const { params } = ctx;
   const book = new Book();
-  await book.find(params.id);
+  await book.findById(params.id);
   if (isEmpty(book)) {
     ctx.response.status = 400;
     throw new Error(`Book with ID ${ctx.params.id} not found`);
@@ -312,7 +283,7 @@ const remove = async (ctx) => {
     const bookTitle = book.title;
     await book.remove();
     ctx.body = {
-      status: SUCCESS,
+      status: Status.SUCCESS,
       message: `The book '${bookTitle}' has been removed from the library`,
       data: {},
     };

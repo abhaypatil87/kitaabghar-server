@@ -1,78 +1,14 @@
 import database from "../database";
-import { BookWithAuthorObject } from "../utils/declarations";
+import { AuthorNameObject, BookWithAuthorObject } from "../utils/declarations";
 import escapeString from "../utils/stringUtils";
 
-const findById = async (id) => {
-  try {
-    const { results } = await database.query(
-      `SELECT books.book_id,
-              books.title,
-              books.subtitle,
-              books.description,
-              books.isbn_10,
-              books.isbn_13,
-              books.page_count,
-              books.thumbnail_url,
-              authors.first_name,
-              authors.last_name,
-              authors.author_id
-       FROM books
-                INNER JOIN authors ON authors.author_id = books.author_id
-       WHERE books.book_id = $1
-      `,
-      [id]
-    );
-    if (results.length === 0) {
-      return;
-    }
-    return JSON.parse(JSON.stringify(results[0]));
-  } catch (error) {
-    throw error;
-  }
-};
-
-const findByIsbn = async (isbn: string) => {
-  try {
-    const { results } = await database.query(
-      `SELECT books.book_id,
-              books.title,
-              books.subtitle,
-              books.description,
-              books.isbn_10,
-              books.isbn_13,
-              books.page_count,
-              books.thumbnail_url
-       FROM books
-       WHERE books.isbn_10 = $1 OR books.isbn_13 = $1
-      `,
-      [isbn]
-    );
-    return results.length === 0 ? {} : JSON.parse(JSON.stringify(results[0]));
-  } catch (error) {
-    throw error;
-  }
-};
-
-const findByTitle = async (title: string) => {
-  try {
-    const { results } = await database.query(
-      `SELECT books.book_id,
-              books.title,
-              books.subtitle,
-              books.description,
-              books.isbn_10,
-              books.isbn_13,
-              books.page_count,
-              books.thumbnail_url
-       FROM books
-       WHERE books.title LIKE '%${title}%'
-      `
-    );
-    return results.length === 0 ? {} : JSON.parse(JSON.stringify(results[0]));
-  } catch (error) {
-    throw error;
-  }
-};
+function getAuthorObject(nameObject: AuthorNameObject) {
+  return {
+    author_id: nameObject.author_id,
+    first_name: nameObject.first_name,
+    last_name: nameObject.last_name,
+  };
+}
 
 class Book {
   book_id;
@@ -92,15 +28,82 @@ class Book {
     this.init(props);
   }
 
-  async find(id) {
+  async findByTitle(): Promise<BookWithAuthorObject | undefined> {
     try {
-      const result = await findById(id);
-      if (!result) return {};
-      result.author = {
-        author_id: result.author_id,
-        first_name: result.first_name,
-        last_name: result.last_name,
-      };
+      const { results } = await database.query(
+        `SELECT books.book_id,
+              books.title,
+              books.subtitle,
+              books.description,
+              books.isbn_10,
+              books.isbn_13,
+              books.page_count,
+              books.thumbnail_url
+       FROM books
+       WHERE books.title LIKE '%${this.title}%'
+       AND library_id = $1
+      `,
+        [this.library_id]
+      );
+      if (results.length === 0) {
+        return undefined;
+      }
+      return JSON.parse(JSON.stringify(results[0]));
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async findByIsbn(): Promise<BookWithAuthorObject | undefined> {
+    try {
+      const { results } = await database.query(
+        `SELECT books.book_id,
+              books.title,
+              books.subtitle,
+              books.description,
+              books.isbn_10,
+              books.isbn_13,
+              books.page_count,
+              books.thumbnail_url
+       FROM books
+       WHERE (books.isbn_10 = $1 OR books.isbn_13 = $2)
+       AND library_id = $3
+      `,
+        [this.isbn_10, this.isbn_13, this.library_id]
+      );
+      if (results.length === 0) {
+        return undefined;
+      }
+      return JSON.parse(JSON.stringify(results[0]));
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async findById(id): Promise<void | undefined> {
+    try {
+      const { results } = await database.query(
+        `SELECT books.book_id,
+              books.title,
+              books.subtitle,
+              books.description,
+              books.isbn_10,
+              books.isbn_13,
+              books.page_count,
+              books.thumbnail_url,
+              authors.first_name,
+              authors.last_name,
+              authors.author_id
+        FROM books
+        INNER JOIN authors ON authors.author_id = books.author_id
+        WHERE books.book_id = $1`,
+        [id]
+      );
+      if (results.length === 0) {
+        return undefined;
+      }
+      const result = results[0];
+      result.author = getAuthorObject(result);
       this.init(result);
     } catch (error) {
       throw error;
@@ -251,4 +254,4 @@ class Book {
   }
 }
 
-export { findByIsbn, findByTitle, Book };
+export { Book };
