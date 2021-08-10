@@ -2,8 +2,7 @@ import * as Joi from "joi";
 import * as bcrypt from "bcryptjs";
 import * as jwt from "jsonwebtoken";
 import database from "../database";
-import { SUCCESS } from "../utils/enums";
-import { User } from "../utils/declarations";
+import { Status, User } from "../utils/declarations";
 import librariesController from "./librariesController";
 
 const userSchema = Joi.object({
@@ -20,7 +19,7 @@ function getMyJwt(ctx) {
 }
 
 /*
- * Creates a user account
+ * Creates and returns a user account
  */
 async function createUserAccount(user: User): Promise<User | undefined> {
   try {
@@ -54,7 +53,11 @@ async function createUserAccount(user: User): Promise<User | undefined> {
   }
 }
 
-async function deleteUserLibraryBooks(userId: number) {
+/*
+ * Deletes books associated with a user's library,
+ * given a user ID
+ */
+async function deleteUserLibraryBooks(userId: number): Promise<void> {
   try {
     await database.query(
       `DELETE FROM books 
@@ -66,11 +69,13 @@ async function deleteUserLibraryBooks(userId: number) {
       [userId]
     );
     await database.query("COMMIT");
-    return true;
   } catch (error) {}
 }
 
-async function deleteUserLibrary(userId: number) {
+/*
+ * Deletes a user library, given a user ID
+ */
+async function deleteUserLibrary(userId: number): Promise<void> {
   try {
     await database.query(
       `DELETE FROM user_libraries
@@ -78,14 +83,16 @@ async function deleteUserLibrary(userId: number) {
       [userId]
     );
     await database.query("COMMIT");
-    return true;
   } catch (error) {
     await database.query("ROLLBACK");
     throw error;
   }
 }
 
-async function deleteUserAccount(userId: number) {
+/*
+ * Deletes a user, given a user ID
+ */
+async function deleteUserAccount(userId: number): Promise<void> {
   try {
     await database.query(
       `DELETE FROM users
@@ -93,7 +100,6 @@ async function deleteUserAccount(userId: number) {
       [userId]
     );
     await database.query("COMMIT");
-    return true;
   } catch (error) {
     await database.query("ROLLBACK");
     throw error;
@@ -196,7 +202,7 @@ const signIn = async (ctx) => {
       );
 
       ctx.body = {
-        status: SUCCESS,
+        status: Status.SUCCESS,
         message: `Login successful`,
         data: {
           user: { ...existingUser, token },
@@ -242,7 +248,7 @@ const signUp = async (ctx) => {
         { expiresIn: process.env.JWT_ACCESS_TOKEN_EXP }
       );
       ctx.body = {
-        status: SUCCESS,
+        status: Status.SUCCESS,
         message: `Sign Up successful`,
         data: {
           user: { ...newUser, token },
@@ -264,7 +270,7 @@ const deleteAccount = async (ctx) => {
     await deleteUserLibrary(loggedInUser.id);
     await deleteUserAccount(loggedInUser.id);
     ctx.body = {
-      status: SUCCESS,
+      status: Status.SUCCESS,
       message: "",
       data: {
         me: true,

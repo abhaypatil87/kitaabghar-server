@@ -1,8 +1,8 @@
-/*
- * Creates a default library for a user
- */
 import database from "../database";
 
+/*
+ * Creates and returns a default library for a given user ID
+ */
 async function createUserLibrary(userId: number) {
   try {
     await database.query("START TRANSACTION");
@@ -13,9 +13,6 @@ async function createUserLibrary(userId: number) {
           RETURNING *`,
       [userId]
     );
-    if (results.length === 0) {
-      return undefined;
-    }
     return results[0];
   } catch (error) {
     throw error;
@@ -25,8 +22,7 @@ async function createUserLibrary(userId: number) {
 }
 
 /*
- * Gets all the libraries created for the user
- * accepts: userId: number
+ * Gets the libraries created for the given user ID
  * returns: First (and only) library entry
  */
 async function getUserLibraries(userId: number) {
@@ -35,11 +31,13 @@ async function getUserLibraries(userId: number) {
     let { results } = await database.query(
       `
           SELECT library_id FROM user_libraries
-          WHERE user_id = $1`,
+          WHERE user_id = $1
+          ORDER BY library_id
+          LIMIT 1`,
       [userId]
     );
     if (results.length === 0) {
-      return undefined;
+      throw new Error("No library found");
     }
     return results[0];
   } catch (error) {

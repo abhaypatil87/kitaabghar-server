@@ -1,5 +1,7 @@
+import { isEmpty } from "../utils/objectUtils";
+import { Status } from "../utils/declarations";
+
 const Joi = require("joi");
-const { SUCCESS } = require("../utils/enums");
 const { Author } = require("../models/Author");
 
 const authorSchema = Joi.object({
@@ -7,10 +9,6 @@ const authorSchema = Joi.object({
   first_name: Joi.string().min(1).max(50).required(),
   last_name: Joi.string().min(1).max(50).required(),
 });
-
-const isEmpty = (object) => {
-  return Object.keys(object).length === 0 || JSON.stringify(object) === "{}";
-};
 
 const verifyParameter = (ctx) => {
   const { params } = ctx;
@@ -25,7 +23,7 @@ const getAuthors = async (ctx) => {
   try {
     const result = await author.all();
     ctx.body = {
-      status: SUCCESS,
+      status: Status.SUCCESS,
       message: "",
       data: {
         authors: result,
@@ -48,7 +46,7 @@ const getAuthor = async (ctx) => {
   }
 
   ctx.body = {
-    status: SUCCESS,
+    status: Status.SUCCESS,
     message: "",
     data: {
       author,
@@ -70,7 +68,7 @@ const createAuthor = async (ctx) => {
     const result = await author.store();
     author.author_id = result.rows[0]["author_id"];
     ctx.body = {
-      status: SUCCESS,
+      status: Status.SUCCESS,
       message: "Author created",
       data: {
         author,
@@ -108,7 +106,7 @@ const updateAuthor = async (ctx) => {
   try {
     await author.update();
     ctx.body = {
-      status: SUCCESS,
+      status: Status.SUCCESS,
       message: "Author updated",
       data: author,
     };
@@ -131,7 +129,7 @@ const removeAuthor = async (ctx) => {
   try {
     await author.remove();
     ctx.body = {
-      status: SUCCESS,
+      status: Status.SUCCESS,
       message: "Author removed",
       data: {},
     };

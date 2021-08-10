@@ -1,3 +1,5 @@
+import { Status } from "./src/utils/declarations";
+
 require("dotenv").config();
 import * as Koa from "koa";
 import * as cors from "@koa/cors";
@@ -5,7 +7,6 @@ import { userAgent } from "koa-useragent";
 
 import database from "./src/database";
 import { router } from "./router";
-import { ERROR } from "./src/utils/enums";
 import bunyanLogger from "./src/utils/logger";
 
 const port = process.env.PORT || 4000;
@@ -38,7 +39,7 @@ app.use(async (ctx, next) => {
   } catch (err) {
     err.status = err.statusCode || err.status || 500;
     ctx.body = {
-      status: ERROR,
+      status: Status.ERROR,
       message: err.message,
       data: {},
     };
