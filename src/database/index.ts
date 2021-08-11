@@ -119,7 +119,17 @@ class Database {
     }
   }
 
+  private static getDatabaseName() {
+    let databaseName = process.env.DB_DATABASE;
+    if (process.env.DATABASE_URL) {
+      const lastSlash = process.env.DATABASE_URL.lastIndexOf("/");
+      databaseName = process.env.DATABASE_URL.substr(lastSlash + 1);
+    }
+    return databaseName;
+  }
+
   private async connectAndInitialise() {
+    const databaseName = Database.getDatabaseName();
     const isProduction = env === "production";
     const connectionString = `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_DATABASE}`;
     const connectionConfig = {
@@ -143,7 +153,7 @@ class Database {
               AND table_name = 'database_version'
             LIMIT 1
         `,
-          [process.env.DB_DATABASE]
+          [databaseName]
         );
 
         if (result.rowCount === 0) {
