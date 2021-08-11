@@ -155,7 +155,6 @@ const create = async (ctx) => {
     loggedInUser.id
   );
   const libraryId = userLibrary["library_id"];
-  console.log(`Library ID: ${libraryId}`);
   /* create a book by third party lookup */
   if (requestBody.hasOwnProperty("isbn")) {
     let olBooksResp;

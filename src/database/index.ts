@@ -5,7 +5,6 @@ import bunyanLogger from "../utils/logger";
 import environment from "../../config";
 
 const env = process.env.NODE_ENV || "development";
-const connection = environment[env].connection;
 const migrations = environment[env].migrations;
 const seeds = environment[env].seeds;
 const logger = bunyanLogger.child({ component: "database" });
@@ -144,11 +143,11 @@ class Database {
               AND table_name = 'database_version'
             LIMIT 1
         `,
-          [connection.database]
+          [process.env.DB_DATABASE]
         );
 
         if (result.rowCount === 0) {
-          await initialiseDatabase(conn, connection.database);
+          await initialiseDatabase(conn, process.env.DB_DATABASE);
         } else {
           /* Run only the necessary scripts */
           await migrateDatabase(conn);
@@ -271,7 +270,10 @@ const migrateDatabase = async (conn: Connection) => {
   }
 };
 
-const initialiseDatabase = async (conn: Connection, dbName: string) => {
+const initialiseDatabase = async (
+  conn: Connection,
+  dbName: string | undefined
+) => {
   logger.info(
     `ACTIVITY: initialiseDatabase. START. Initialising a new database ${dbName} with full schema`
   );
